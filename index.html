@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Career Command Center</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --panel: #181b24;
+    --panel2: #1f2330;
+    --border: #2a2f3e;
+    --text: #e8eaf0;
+    --muted: #9aa1b5;
+    --accent: #7c6cff;
+    --accent2: #4fd1c5;
+    --green: #48bb78;
+    --yellow: #ecc94b;
+    --red: #f56565;
+    --blue: #63b3ed;
+    --orange: #ed8936;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+  }
+  header {
+    padding: 24px 32px 0;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #161a26 0%, var(--bg) 100%);
+  }
+  header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+  header h1 span { color: var(--accent); }
+  header .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .stats-row { display: flex; gap: 12px; margin: 18px 0; flex-wrap: wrap; }
+  .stat {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 18px; min-width: 110px;
+  }
+  .stat .num { font-size: 22px; font-weight: 700; color: var(--accent2); }
+  .stat .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  nav { display: flex; gap: 4px; flex-wrap: wrap; }
+  nav button {
+    background: none; border: none; color: var(--muted); padding: 10px 16px;
+    font-size: 14px; cursor: pointer; border-bottom: 2px solid transparent;
+    font-weight: 500;
+  }
+  nav button:hover { color: var(--text); }
+  nav button.active { color: var(--accent); border-bottom-color: var(--accent); }
+  main { padding: 24px 32px 80px; max-width: 1200px; margin: 0 auto; }
+  .tab { display: none; }
+  .tab.active { display: block; }
+  .toolbar { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; align-items: center; }
+  .toolbar input[type=text], .toolbar select {
+    background: var(--panel2); border: 1px solid var(--border); color: var(--text);
+    padding: 8px 12px; border-radius: 8px; font-size: 13px;
+  }
+  .toolbar input[type=text] { flex: 1; min-width: 180px; }
+  button.btn {
+    background: var(--accent); color: white; border: none; padding: 8px 16px;
+    border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  button.btn:hover { filter: brightness(1.15); }
+  button.btn.secondary { background: var(--panel2); border: 1px solid var(--border); color: var(--text); }
+  button.btn.danger { background: transparent; border: 1px solid var(--red); color: var(--red); padding: 4px 10px; font-size: 12px; }
+  button.btn.small { padding: 4px 10px; font-size: 12px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 18px; margin-bottom: 10px; display: flex; justify-content: space-between;
+    align-items: flex-start; gap: 14px; transition: border-color .15s;
+  }
+  .card:hover { border-color: #3a4055; }
+  .card .info { flex: 1; min-width: 0; }
+  .card .title { font-weight: 600; font-size: 15px; }
+  .card .title a { color: var(--text); text-decoration: none; }
+  .card .title a:hover { color: var(--accent); text-decoration: underline; }
+  .card .meta { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+  .card .notes { color: var(--muted); font-size: 12.5px; margin-top: 6px; white-space: pre-wrap; font-style: italic; }
+  .card .actions { display: flex; gap: 6px; align-items: center; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px;
+    font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .badge.interested { background: rgba(99,179,237,.15); color: var(--blue); }
+  .badge.applied { background: rgba(236,201,75,.15); color: var(--yellow); }
+  .badge.interview { background: rgba(237,137,54,.18); color: var(--orange); }
+  .badge.offer { background: rgba(72,187,120,.15); color: var(--green); }
+  .badge.rejected { background: rgba(245,101,101,.13); color: var(--red); }
+  .badge.todo { background: rgba(99,179,237,.15); color: var(--blue); }
+  .badge.reached-out { background: rgba(236,201,75,.15); color: var(--yellow); }
+  .badge.scheduled { background: rgba(237,137,54,.18); color: var(--orange); }
+  .badge.done { background: rgba(72,187,120,.15); color: var(--green); }
+  .badge.not-started { background: rgba(154,161,181,.15); color: var(--muted); }
+  .badge.in-progress { background: rgba(236,201,75,.15); color: var(--yellow); }
+  .badge.completed { background: rgba(72,187,120,.15); color: var(--green); }
+  .badge.enrolled { background: rgba(79,209,197,.15); color: var(--accent2); }
+  .badge.t1 { background: rgba(124,108,255,.18); color: var(--accent); }
+  .badge.t2 { background: rgba(99,179,237,.15); color: var(--blue); }
+  .badge.t3 { background: rgba(154,161,181,.15); color: var(--muted); }
+  /* daily ops */
+  .ops-h { font-size: 15px; color: var(--accent2); margin: 22px 0 10px; display: flex; align-items: center; gap: 10px; }
+  .ops-h .line { flex: 1; height: 1px; background: var(--border); }
+  .check-card { display: flex; gap: 12px; align-items: flex-start; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 8px; cursor: pointer; }
+  .check-card input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+  .check-card .t { font-weight: 600; font-size: 14px; }
+  .check-card .d { color: var(--muted); font-size: 12.5px; margin-top: 3px; }
+  .check-card.done .t { text-decoration: line-through; color: var(--muted); }
+  .mvd { background: rgba(236,201,75,.07); border: 1px solid rgba(236,201,75,.3); border-radius: 12px; padding: 12px 16px; font-size: 13px; color: var(--text); margin: 14px 0; }
+  .mvd b { color: var(--yellow); }
+  .counter-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
+  .counter { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+  .counter .lbl { font-size: 12px; color: var(--muted); }
+  .counter .row { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+  .counter .val { font-size: 20px; font-weight: 700; color: var(--accent2); min-width: 52px; }
+  .counter .val.hit { color: var(--green); }
+  .counter button { background: var(--panel2); border: 1px solid var(--border); color: var(--text); width: 26px; height: 26px; border-radius: 7px; cursor: pointer; font-size: 15px; }
+  .phase-card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 13px 16px; margin-bottom: 8px; font-size: 13px; }
+  .phase-card.current { border-color: var(--accent); }
+  .phase-card .name { font-weight: 700; font-size: 13.5px; }
+  .phase-card.current .name::after { content: ' — you are here'; color: var(--accent); font-weight: 600; }
+  .phase-card .desc { color: var(--muted); margin-top: 4px; }
+  select.status-select {
+    background: var(--panel2); border: 1px solid var(--border); color: var(--text);
+    padding: 4px 8px; border-radius: 6px; font-size: 12px; cursor: pointer;
+  }
+  .deadline { font-size: 12px; color: var(--muted); }
+  .deadline.soon { color: var(--red); font-weight: 600; }
+  .empty { text-align: center; color: var(--muted); padding: 48px 20px; font-size: 14px; }
+  .empty .hint { font-size: 12.5px; margin-top: 8px; opacity: .8; }
+  /* modal */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.65);
+    z-index: 100; align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+    padding: 26px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
+  }
+  .modal h3 { margin-bottom: 18px; font-size: 17px; }
+  .modal label { display: block; font-size: 12px; color: var(--muted); margin: 12px 0 5px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
+  .modal input, .modal select, .modal textarea {
+    width: 100%; background: var(--panel2); border: 1px solid var(--border); color: var(--text);
+    padding: 9px 12px; border-radius: 8px; font-size: 14px; font-family: inherit;
+  }
+  .modal textarea { min-height: 70px; resize: vertical; }
+  .modal .modal-actions { display: flex; gap: 10px; margin-top: 22px; justify-content: flex-end; }
+  /* roadmap */
+  .phase { margin-bottom: 26px; }
+  .phase-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .phase-header h3 { font-size: 15px; color: var(--accent2); }
+  .phase-header .line { flex: 1; height: 1px; background: var(--border); }
+  /* live feed */
+  .feed-status { font-size: 13px; color: var(--muted); margin: 8px 0 14px; }
+  .feed-status.err { color: var(--red); }
+  .src-row { display:flex; gap:8px; align-items:center; font-size:12.5px; color:var(--muted); margin-bottom:6px; flex-wrap: wrap; }
+  .src-row code { background: var(--panel2); padding: 2px 7px; border-radius: 5px; font-size: 11.5px; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -2px; margin-right: 6px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .footer-bar {
+    position: fixed; bottom: 0; left: 0; right: 0; background: var(--panel);
+    border-top: 1px solid var(--border); padding: 10px 32px; display: flex; gap: 10px;
+    align-items: center; font-size: 12px; color: var(--muted);
+  }
+  .footer-bar .grow { flex: 1; }
+  @media (max-width: 640px) {
+    header, main { padding-left: 16px; padding-right: 16px; }
+    .card { flex-direction: column; }
+    .card .actions { justify-content: flex-start; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Career <span>Command Center</span></h1>
+  <div class="sub">AI-adjacent product roles &mdash; roadmap, opportunities, and networking tracker</div>
+  <div class="stats-row" id="statsRow"></div>
+  <nav id="nav">
+    <button data-tab="roadmap" class="active">🗺️ Roadmap</button>
+    <button data-tab="ops">📅 Daily Ops</button>
+    <button data-tab="internships">💼 Internships</button>
+    <button data-tab="jobs">🕐 Jobs / Part-time</button>
+    <button data-tab="programs">🎓 Programs &amp; Apprenticeships</button>
+    <button data-tab="coffee">☕ Coffee Chats</button>
+    <button data-tab="resources">🔗 Resources</button>
+    <button data-tab="feed">📡 Live Feed</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ROADMAP -->
+  <section class="tab active" id="tab-roadmap">
+    <div class="toolbar">
+      <button class="btn" onclick="openForm('roadmap')">+ Add milestone</button>
+    </div>
+    <div id="list-roadmap"></div>
+  </section>
+
+  <!-- DAILY OPS -->
+  <section class="tab" id="tab-ops">
+    <div class="ops-h"><h3 id="ops-today-h">Today</h3><div class="line"></div></div>
+    <div id="ops-daily"></div>
+    <div class="mvd"><b>Minimum viable day</b> (exam weeks, heavy weeks): morning triage 15 min + one network touch 10 min. Nothing else — but never zero. Postings and recruiter emails don't pause for midterms; a 25-minute floor keeps the machine alive.</div>
+    <div class="ops-h"><h3 id="ops-week-h">This week</h3><div class="line"></div></div>
+    <div class="counter-grid" id="ops-week"></div>
+    <div class="ops-h"><h3>Phase calendar</h3><div class="line"></div></div>
+    <div id="ops-phases"></div>
+  </section>
+
+  <!-- INTERNSHIPS -->
+  <section class="tab" id="tab-internships">
+    <div class="toolbar">
+      <input type="text" id="search-internships" placeholder="Search internships..." oninput="render()">
+      <select id="filter-internships" onchange="render()">
+        <option value="">All statuses</option>
+        <option>interested</option><option>applied</option><option>interview</option><option>offer</option><option>rejected</option>
+      </select>
+      <button class="btn" onclick="openForm('internships')">+ Add internship</button>
+    </div>
+    <div id="list-internships"></div>
+  </section>
+
+  <!-- JOBS -->
+  <section class="tab" id="tab-jobs">
+    <div class="toolbar">
+      <input type="text" id="search-jobs" placeholder="Search jobs..." oninput="render()">
+      <select id="filter-jobs" onchange="render()">
+        <option value="">All statuses</option>
+        <option>interested</option><option>applied</option><option>interview</option><option>offer</option><option>rejected</option>
+      </select>
+      <button class="btn" onclick="openForm('jobs')">+ Add job</button>
+    </div>
+    <div id="list-jobs"></div>
+  </section>
+
+  <!-- PROGRAMS -->
+  <section class="tab" id="tab-programs">
+    <div class="toolbar">
+      <input type="text" id="search-programs" placeholder="Search programs, fellowships, apprenticeships..." oninput="render()">
+      <select id="filter-programs" onchange="render()">
+        <option value="">All statuses</option>
+        <option>interested</option><option>applied</option><option>interview</option><option>offer</option><option>rejected</option>
+      </select>
+      <button class="btn" onclick="openForm('programs')">+ Add program</button>
+    </div>
+    <div id="list-programs"></div>
+  </section>
+
+  <!-- COFFEE CHATS -->
+  <section class="tab" id="tab-coffee">
+    <div class="toolbar">
+      <input type="text" id="search-coffee" placeholder="Search people..." oninput="render()">
+      <select id="filter-coffee" onchange="render()">
+        <option value="">All statuses</option>
+        <option>todo</option><option>reached-out</option><option>scheduled</option><option>done</option>
+      </select>
+      <button class="btn" onclick="openForm('coffee')">+ Add person</button>
+    </div>
+    <div id="list-coffee"></div>
+  </section>
+
+  <!-- RESOURCES -->
+  <section class="tab" id="tab-resources">
+    <div class="toolbar">
+      <button class="btn" onclick="openForm('resources')">+ Add resource</button>
+    </div>
+    <div id="list-resources"></div>
+  </section>
+
+  <!-- LIVE FEED -->
+  <section class="tab" id="tab-feed">
+    <div class="src-row">Sources:
+      <code>SimplifyJobs/Summer2026-Internships</code>
+      <code>speedyapply/2026-AI-College-Jobs</code>
+    </div>
+    <div class="toolbar">
+      <input type="text" id="feed-keywords" placeholder="Filter keywords (comma-separated)" value="AI, ML, machine learning, product, solutions, deployment, forward deployed, applied, agent, LLM, TPM">
+      <button class="btn" onclick="fetchFeed()">🔄 Refresh from internet</button>
+    </div>
+    <div class="feed-status" id="feed-status">Click "Refresh from internet" to pull the latest openings from GitHub internship lists, filtered to your keywords.</div>
+    <div id="list-feed"></div>
+  </section>
+
+</main>
+
+<div class="footer-bar">
+  <span id="saveStamp">All changes saved locally in this browser.</span>
+  <div class="grow"></div>
+  <button class="btn small secondary" onclick="exportData()">Export JSON</button>
+  <button class="btn small secondary" onclick="document.getElementById('importFile').click()">Import JSON</button>
+  <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeForm()">
+  <div class="modal">
+    <h3 id="modalTitle">Add item</h3>
+    <form id="modalForm" onsubmit="saveForm(event)"></form>
+  </div>
+</div>
+
+<script>
+// ---------------- data layer ----------------
+const STORE_KEY = 'career-dashboard-v2';
+const SECTIONS = ['roadmap','internships','jobs','programs','coffee','resources'];
+
+const PHASES = [
+  'Now: Jul–Aug 2026 (at Citi)',
+  'Junior fall: Sep–Dec 2026 (peak season)',
+  'Spring 2027',
+  'Summer 2027 & senior year',
+];
+
+const DEFAULT_DATA = {
+  roadmap: [
+    { id: uid(), title: 'Deliver the Citi script project; document before/after runtime win', phase: PHASES[0], due: '2026-08-14', status: 'in-progress', notes: 'Priority one — recruiting runs at 60% until late August. This win anchors your resume numbers and the return-offer conversation.' },
+    { id: uid(), title: 'Raise return-offer conversion with your manager', phase: PHASES[0], due: '2026-08-07', status: 'not-started', notes: 'A Citi return offer in hand by August ends the desperation game and lets you be selective all fall.' },
+    { id: uid(), title: 'Ask your ETL architect for 2 introductions', phase: PHASES[0], due: '2026-08-21', status: 'not-started', notes: 'Before the internship ends. Intros can include startup people, not just enterprise.' },
+    { id: uid(), title: 'Fill in the two current-Citi resume bullets with real numbers', phase: PHASES[0], due: '2026-08-14', status: 'not-started', notes: 'Services monitored, teams served, hours saved — anything countable. Ask the architect what impact he would attribute to your work; that conversation doubles as return-offer positioning. Then both resume variants are send-ready.' },
+    { id: uid(), title: 'Verify the RAG chatbot bullet matches the deployed app', phase: PHASES[0], due: '2026-07-31', status: 'not-started', notes: 'SE interviewers will open the link and poke at it. Make sure chunking/embedding/retrieval framing matches what is live.' },
+    { id: uid(), title: 'Apply to early postings within 48h: Salesforce, Google, Databricks', phase: PHASES[0], due: '2026-08-31', status: 'not-started', notes: 'These open in waves starting late July. Tracker companies get same-day applications.' },
+    { id: uid(), title: 'Submit STEM Aspire (Dell) application', phase: PHASES[0], status: 'in-progress', due: '', notes: 'Already in motion — push it. Warm paths: Shreya + STEM Aspire network.' },
+    { id: uid(), title: 'Join Rewriting the Code', phase: PHASES[0], due: '2026-07-17', status: 'not-started', notes: 'Free, 10 minutes. Members-only job board + referral channels for women in CS.' },
+    { id: uid(), title: '10–12 quality applications per week, referrals where possible', phase: PHASES[1], due: '', status: 'not-started', notes: 'Sep–mid Nov is the decisive season for summer 2027. Tracker companies get tailored materials + 48-hour speed; everything else gets fast clean applications.' },
+    { id: uid(), title: '2 coffee chats per week, logged within 24h', phase: PHASES[1], due: '', status: 'not-started', notes: 'Fixed windows (e.g. Tue/Thu 4–5pm). Thank-you + log in the Coffee Chats tab within 24 hours. Keep using the under-200-character connection note format.' },
+    { id: uid(), title: 'LeetCode: NeetCode 150 in order, mediums comfortable by December', phase: PHASES[1], due: '2026-12-15', status: 'not-started', notes: 'Target ~100–150 total. One quality problem daily (25 min attempt → study optimal → re-implement) beats five rushed ones. Order: arrays/hashing → two pointers → sliding window → stack → binary search → trees → graphs → DP.' },
+    { id: uid(), title: 'Write 6–8 STAR stories in September, before you need them', phase: PHASES[1], due: '2026-09-30', status: 'not-started', notes: 'Citi "translated architecture to 100+ engineers and execs" is the anchor. Have versions for ambiguity, conflict, and ownership.' },
+    { id: uid(), title: 'Build & ship the agentic AI project (tool use + eval loop)', phase: PHASES[1], due: '2026-10-31', status: 'not-started', notes: 'Saturday deep blocks. The 2026 non-negotiable is agentic workflows — one small agent on GitHub with README, screenshots, one-paragraph architecture.' },
+    { id: uid(), title: 'UT career fair: collect recruiters, same-week follow-ups', phase: PHASES[1], due: '', status: 'not-started', notes: 'Career fair week: add recruiter collection to the weekly rhythm.' },
+    { id: uid(), title: '1–2 decomposition cases per week, out loud', phase: PHASES[1], due: '', status: 'not-started', notes: '"Customer has messy problem X — design the deployment." Clarify → chunk → simple MVP → iterate, thinking out loud. Your BCG OCA prep transfers directly.' },
+    { id: uid(), title: 'Before each OA: 2–3 timed 70-minute problem sets', phase: PHASES[1], due: '', status: 'not-started', notes: 'CodeSignal-style pacing — timed performance is a separate skill from untimed practice. When OAs land, the evening block converts to company-specific prep.' },
+    { id: uid(), title: 'Check WiCS/UT funding for a Grace Hopper ticket', phase: PHASES[1], due: '2026-09-15', status: 'not-started', notes: 'Only go if funded.' },
+    { id: uid(), title: 'BTT AI Studio industry project = second flagship artifact', phase: PHASES[2], due: '', status: 'not-started', notes: 'Replaces the coursework bullet on the resume once it starts.' },
+    { id: uid(), title: 'Convert at least one Tier 1 or Tier 2 offer', phase: PHASES[2], due: '2027-04-30', status: 'not-started', notes: 'If converted, recruiting drops to 15 min/day maintenance triage. If not, full template continues — spring postings are fewer but less competed.' },
+    { id: uid(), title: 'Part-time startup role becomes the deep-work block (if landed)', phase: PHASES[2], due: '', status: 'not-started', notes: '10–15 hrs/week owning evals, integrations, or dashboards at a seed-stage AI startup.' },
+    { id: uid(), title: 'Summer 2027: deployment/solutions-flavored internship at an AI-forward company', phase: PHASES[3], due: '', status: 'not-started', notes: 'This internship decides the new-grad outcome — it converts directly into the $150–250k+ roles you want.' },
+    { id: uid(), title: 'Convert the internship into a new-grad offer', phase: PHASES[3], due: '', status: 'not-started', notes: 'Realistic day-one job: Solutions Engineer / Customer Engineer / Associate FDE at an enterprise vendor or growth-stage AI company.' },
+    { id: uid(), title: 'Frontier-lab new-grad applications from a position of strength', phase: PHASES[3], due: '', status: 'not-started', notes: 'Anthropic / OpenAI Applied AI & FDE orgs are post-sales delivery — realistic at graduation, not junior year. Revisit fall 2027.' },
+  ],
+  internships: [
+    { id: uid(), tier: 'T1', title: 'Agentic AI Solutions Engineering Intern', company: 'NVIDIA', url: '', deadline: '', status: 'interested', notes: 'SE/FDE · window Aug–Oct · Reapply; reconnect with anyone from last cycle. Developer enablement org, not quota sales — verify comp structure in interviews.' },
+    { id: uid(), tier: 'T1', title: 'SWE Intern (→ Resident SA / FDE-type post-sales)', company: 'Databricks', url: '', deadline: '', status: 'interested', notes: 'SE/FDE · window Aug–Sep · Ask BTT mentors + LinkedIn outreach to a Databricks SA. SWE intern feeds their delivery/FDE-type roles.' },
+    { id: uid(), tier: 'T1', title: 'SWE / Applied AI Intern (deployment-focused)', company: 'Scale AI', url: '', deadline: '', status: 'interested', notes: 'SE/FDE · rolling · Cold email + RAG project link. Embedded FDE pods; hires for ambiguity and first-principles thinking.' },
+    { id: uid(), tier: 'T1', title: 'Customer Success Engineer Co-op', company: 'IBM', url: '', deadline: '', status: 'interested', notes: 'SE · already in motion — push existing IBM contacts. Post-sales adoption role, no sales quota; confirm whether comp has a variable component.' },
+    { id: uid(), tier: 'T1', title: 'STEP / SWE Intern (feeder to FDE org)', company: 'Google', url: '', deadline: '', status: 'interested', notes: 'SE/FDE · window Aug–Oct · Jasleen Singh thread (FDE, UT alum, invited resumes); mutuals Somya + Harini. SWE intern is the credential; FDE org (post-sales, no quota) is the destination. Skip the CE track: presales.' },
+    { id: uid(), tier: 'T1', title: 'Explore / SWE Intern', company: 'Microsoft', url: '', deadline: '', status: 'interested', notes: 'SWE feeder · window Jul–Sep · LinkedIn outreach to UT alumni SWEs. Engineering credential + FDE-adjacent applied AI roles, no sales.' },
+    { id: uid(), tier: 'T1', title: 'SDE Intern', company: 'Amazon (AWS)', url: '', deadline: '', status: 'interested', notes: 'SWE feeder · window Aug–Oct · UT pipeline is strong; career fair. AWS ProServe (post-sales, no quota) is the grad-time target.' },
+    { id: uid(), tier: 'T1', title: 'GenAI Intern', company: 'Dell', url: '', deadline: '', status: 'interested', notes: 'Warm paths: STEM Aspire program + Shreya connection. Austin-local.' },
+    { id: uid(), tier: 'T1', title: 'FDE-style post-sales delivery intern', company: 'C3 AI', url: '', deadline: '', status: 'interested', notes: 'Their whole business model is FDE-style post-sales delivery, and they hire early-career into it.' },
+    { id: uid(), tier: 'T1', title: 'SWE Intern', company: 'Snowflake', url: '', deadline: '', status: 'interested', notes: 'Pairs with the Databricks target.' },
+    { id: uid(), tier: 'T1', title: 'SWE Intern (Futureforce)', company: 'Salesforce', url: '', deadline: '', status: 'interested', notes: 'Engineering side of Futureforce — Agentforce teams do real applied AI with no sales.' },
+    { id: uid(), tier: 'T1', title: 'Deployment / Applied AI Intern (often unposted)', company: 'Sierra / Decagon / Cresta', url: '', deadline: '', status: 'interested', notes: 'SE/FDE · rolling, often hidden · Cold email founders/eng leads with RAG project + one-paragraph pitch. Agent companies; deployment roles under many titles; portfolio-driven hiring.' },
+    { id: uid(), tier: 'T1', title: 'Applied AI / Solutions Intern', company: 'Glean / Hebbia / Harvey / Writer', url: '', deadline: '', status: 'interested', notes: 'SE/FDE · rolling, often hidden · Same cold-email playbook — 10 companies, expect 1–2 replies. Enterprise AI apps: exactly the RAG/agent stack you built.' },
+    { id: uid(), tier: 'T1', title: 'Applied AI / FDE new-grad (watch list)', company: 'Anthropic / OpenAI', url: '', deadline: '', status: 'interested', notes: 'FDE · senior-year target. Build the applied profile now; revisit fall 2027. Frontier-lab FDE orgs are post-sales delivery — realistic at graduation, not junior year.' },
+    { id: uid(), tier: 'T2', title: 'TPM / PM Intern', company: 'Microsoft', url: '', deadline: '', status: 'interested', notes: 'TPM · window Aug–Oct · LinkedIn outreach to a PM; Explore alumni. Structured PM intern program; your PRD is the work sample.' },
+    { id: uid(), tier: 'T2', title: 'TDP / Product Intern', company: 'Capital One', url: '', deadline: '', status: 'interested', notes: 'TPM · window Aug–Sep · UT has a strong Capital One pipeline; career fair. Tech + banking background matches perfectly.' },
+    { id: uid(), tier: 'T2', title: 'TPM Intern', company: 'Tesla', url: '', deadline: '', status: 'interested', notes: 'TPM · rolling · Reapply with the updated resume — materials already tailored last cycle.' },
+    { id: uid(), tier: 'T2', title: 'TPM / PM Intern', company: 'Atlassian', url: '', deadline: '', status: 'interested', notes: 'TPM · window Sep–Nov · LinkedIn outreach. The JIRA power-user story writes itself.' },
+    { id: uid(), tier: 'T2', title: 'PM Intern', company: 'Adobe', url: '', deadline: '', status: 'interested', notes: 'TPM · window Aug–Oct · Structured program at a product-led company.' },
+    { id: uid(), tier: 'T2', title: 'SWE / OCI GenAI Intern', company: 'Oracle', url: '', deadline: '', status: 'interested', notes: 'Austin HQ, OCI GenAI teams, realistic odds.' },
+    { id: uid(), tier: 'T2', title: 'SWE / PM Intern', company: 'Intuit', url: '', deadline: '', status: 'interested', notes: 'AI-forward, high intern conversion.' },
+    { id: uid(), tier: 'T2', title: 'Systems / SWE / Strategy tracks', company: 'D.E. Shaw', url: '', deadline: '', status: 'applied', notes: 'Five tracks already in motion — follow up on existing applications.' },
+    { id: uid(), tier: 'T3', title: 'Data Engineering Consultant Intern (GPS)', company: 'Deloitte', url: '', deadline: '', status: 'interested', notes: 'Consulting · window Aug–Oct · Existing GPS research; UT recruiting events. Bridge option only — keep warm.' },
+    { id: uid(), tier: 'T3', title: 'Technology Consulting Intern', company: 'EY', url: '', deadline: '', status: 'interested', notes: 'Consulting · window Aug–Oct · Danielle Wilcher (existing recruiter contact). Expedition EY relationship already built.' },
+    { id: uid(), tier: 'T3', title: 'AI Consultant Intern', company: 'IBM Consulting', url: '', deadline: '', status: 'interested', notes: 'Consulting · window Sep–Nov · Existing IBM contacts; overlaps with the CSE co-op.' },
+    { id: uid(), tier: 'T3', title: 'Return offer — convert current internship', company: 'Citi', url: '', deadline: '2026-08-07', status: 'interested', notes: 'Baseline · Ask by early Aug. Manager + ETL architect conversation after the script win. Safety net that removes desperation from fall recruiting.' },
+  ],
+  jobs: [
+    { id: uid(), title: 'Part-time student engineer (10–15 hrs/wk), seed-stage AI startup', company: 'Glean/Hebbia/Sierra-style, but seed stage', kind: 'part-time', url: '', deadline: '', status: 'interested', notes: '3-sentence cold email: what you built (RAG link), what you can own part-time (evals, integrations, dashboards), the 10–15 hrs/wk ask. Send 5/week; expect 1–2 replies per 10. Warm paths to activate: BTT mentors, Citi architect intros, Longhorn Neurotech alumni.' },
+    { id: uid(), title: 'Part-time eng via Builder’s Bullpen / Nucleate Texas network', company: 'UT startup competition cohorts', kind: 'part-time', url: '', deadline: '', status: 'interested', notes: 'You already have an inbound from a Bullpen winner. Even having declined the neurotech role, ask those founders: "who else in your cohort needs part-time eng help?" Founders know founders.' },
+  ],
+  programs: [
+    { id: uid(), title: 'STEM Aspire', org: 'Dell', kind: 'other', url: '', deadline: '', status: 'applied', notes: 'Application in motion — push it. Doubles as a warm path into the Dell GenAI intern role.' },
+    { id: uid(), title: 'Break Through Tech AI', org: 'Break Through Tech / Cornell Tech', kind: 'fellowship', url: '', deadline: '', status: 'enrolled', notes: 'Committed. Spring AI Studio industry project becomes the second flagship artifact. Once it starts, it replaces the coursework bullet on the resume. Mentor network = coffee-chat and referral source.' },
+    { id: uid(), title: 'Rewriting the Code', org: 'RTC', kind: 'other', url: 'https://rewritingthecode.org', deadline: '', status: 'interested', notes: 'Join now — free, 10 minutes. Members-only job board + referral channels for women in CS.' },
+    { id: uid(), title: 'Grace Hopper Celebration (fall 2026)', org: 'AnitaB.org', kind: 'other', url: '', deadline: '', status: 'interested', notes: 'Only go if WiCS/UT funds the ticket.' },
+    { id: uid(), title: 'Jhalak', org: 'UT Austin', kind: 'other', url: '', deadline: '', status: 'applied', notes: 'Community, not career.' },
+  ],
+  coffee: [
+    { id: uid(), title: 'Jasleen Singh', role: 'Forward Deployed Engineer, Google (UT alum)', contact: 'LinkedIn', date: '', status: 'reached-out', notes: 'Invited resumes. Mutuals: Somya + Harini. Continue the thread; mention Google’s FDE team buildout.' },
+    { id: uid(), title: 'Citi ETL & Middleware Architect', role: 'Architect, Citi (your current desk)', contact: '', date: '', status: 'todo', notes: 'Ask for 2 introductions before August — can include startup people. The impact conversation doubles as return-offer positioning.' },
+    { id: uid(), title: 'Danielle Wilcher', role: 'Recruiter, EY', contact: '', date: '', status: 'reached-out', notes: 'Expedition EY relationship — keep warm. Consulting is a bridge, not the destination.' },
+    { id: uid(), title: 'Shreya', role: 'Dell connection (STEM Aspire)', contact: '', date: '', status: 'todo', notes: 'Warm path into the Dell GenAI intern role.' },
+    { id: uid(), title: 'Harini', role: 'Google mutual', contact: '', date: '', status: 'todo', notes: 'Mutual for the Jasleen thread / Google referral.' },
+    { id: uid(), title: 'Somya', role: 'Google mutual', contact: '', date: '', status: 'todo', notes: 'Mutual for the Jasleen thread / Google referral.' },
+    { id: uid(), title: 'FDEs / Deployment Engineers (3–4 people)', role: 'Databricks, Scale, C3 AI', contact: '', date: '', status: 'todo', notes: 'Ask: how they broke in, what they’d want to see from a 2028 grad, and which growth companies they respect — frontier labs hire heavily out of growth-stage applied-AI companies. Write down every company name they mention.' },
+    { id: uid(), title: 'Solutions Engineers (2–3 people)', role: 'Salesforce / Datadog / ServiceNow', contact: '', date: '', status: 'todo', notes: 'People who did the intern→SE pipeline. These programs convert interns at high rates and almost nobody at UT competes for them.' },
+    { id: uid(), title: 'BTT mentors & Cornell Tech network', role: 'Anyone with "Solutions" or "Customer Engineer" in the title', contact: '', date: '', status: 'todo', notes: 'Also ask directly: "know any AI startups wanting a part-time student engineer?"' },
+    { id: uid(), title: 'Google Cloud Customer Engineer', role: 'Existing thread', contact: '', date: '', status: 'reached-out', notes: 'Continue the thread you’ve already built; revisit now that Google Cloud is building its own FDE team.' },
+    { id: uid(), title: 'Longhorn Neurotech alumni', role: 'LinkedIn alumni search', contact: '', date: '', status: 'todo', notes: 'Search org name + "founding" or "engineer" — members routinely land at startups. Part-time role leads.' },
+  ],
+  resources: [
+    { id: uid(), title: 'NeetCode 150', url: 'https://neetcode.io/practice', notes: 'The LeetCode list. In order: arrays/hashing → two pointers → sliding window → stack → binary search → trees → graphs → DP. One quality problem daily.' },
+    { id: uid(), title: 'SimplifyJobs Summer 2027 Internships (GitHub)', url: 'https://github.com/SimplifyJobs/Summer2026-Internships', notes: 'Community-maintained internship list — powers the Live Feed tab. Part of daily morning triage.' },
+    { id: uid(), title: '2026 AI College Jobs (speedyapply)', url: 'https://github.com/speedyapply/2026-AI-College-Jobs', notes: 'AI-focused new-grad and internship roles — powers the Live Feed tab.' },
+    { id: uid(), title: 'Intern List', url: 'https://www.intern-list.com', notes: 'Aggregated internship board, updated daily.' },
+    { id: uid(), title: 'Handshake (UT portal)', url: 'https://utexas.joinhandshake.com', notes: 'Weekly scan. Filter part-time + Austin — startups that post here specifically want students.' },
+    { id: uid(), title: 'Wellfound (ex-AngelList)', url: 'https://wellfound.com', notes: 'Weekly scan. Filter Internship + Part-time, AI/ML category. Fill out your profile with the RAG project link — founders find you.' },
+    { id: uid(), title: 'YC Work at a Startup', url: 'https://www.workatastartup.com', notes: 'Weekly scan. One profile, message founders directly; search "part-time" and "intern". YC founders reply to short specific pitches.' },
+    { id: uid(), title: 'Hacker News: Who is Hiring', url: 'https://news.ycombinator.com', notes: 'Monthly (1st). Ctrl+F "part-time", "intern", "contract" in the thread; email directly — response rates beat portals.' },
+    { id: uid(), title: 'Built In Austin', url: 'https://builtin.com/austin', notes: 'Biweekly scan. Local startups = easier part-time logistics and in-person credibility.' },
+    { id: uid(), title: 'Simplify', url: 'https://simplify.jobs', notes: 'Weekly scan of the off-season / part-time internship lists, updated daily by the community.' },
+    { id: uid(), title: 'Capital Factory', url: 'https://capitalfactory.com', notes: '1–2 events/month, downtown Austin. Talk to 3 founders per event — Austin AI startups congregate here.' },
+    { id: uid(), title: 'UT Austin Technology Incubator (ATI)', url: 'https://ati.utexas.edu', notes: 'Browse portfolio companies; cold email founders as a UT student — high reply rate. One-time pass, then quarterly.' },
+    { id: uid(), title: 'Herb Kelleher Entrepreneurship Center', url: '', notes: 'UT campus. Startup career events + founder network built for exactly this ask — check the event calendar.' },
+    { id: uid(), title: 'X (Twitter): Austin + AI founders', url: '', notes: 'Passive daily. Founders post "need a part-time eng" before any job board sees it. Search "part-time" "founding" "intern" + AI.' },
+  ],
+  ops: { checks: {}, week: {} },
+};
+
+// Careers-page links for tracker companies (2027 postings mostly open Aug–Oct;
+// these are the stable early-career pages to check during morning triage).
+const COMPANY_URLS = {
+  'NVIDIA': 'https://www.nvidia.com/en-us/about-nvidia/careers/university-recruiting/',
+  'Databricks': 'https://www.databricks.com/company/careers/university-recruiting',
+  'Scale AI': 'https://scale.com/careers',
+  'IBM': 'https://www.ibm.com/careers/early-career',
+  'Google': 'https://www.google.com/about/careers/applications/students/',
+  'Microsoft': 'https://careers.microsoft.com/v2/global/en/students',
+  'Amazon (AWS)': 'https://www.amazon.jobs/en/teams/internships-for-students',
+  'Dell': 'https://jobs.dell.com/en/students',
+  'C3 AI': 'https://c3.ai/careers/',
+  'Snowflake': 'https://careers.snowflake.com',
+  'Salesforce': 'https://www.salesforce.com/company/careers/university-recruiting/',
+  'Sierra / Decagon / Cresta': 'https://sierra.ai/careers',
+  'Glean / Hebbia / Harvey / Writer': 'https://www.glean.com/careers',
+  'Anthropic / OpenAI': 'https://www.anthropic.com/careers',
+  'Capital One': 'https://www.capitalonecareers.com/campus',
+  'Tesla': 'https://www.tesla.com/careers',
+  'Atlassian': 'https://www.atlassian.com/company/careers/students',
+  'Adobe': 'https://careers.adobe.com/us/en/university',
+  'Oracle': 'https://www.oracle.com/careers/students-grads/',
+  'Intuit': 'https://www.intuit.com/careers/students/',
+  'D.E. Shaw': 'https://www.deshaw.com/careers',
+  'Deloitte': 'https://www2.deloitte.com/us/en/careers/careers.html',
+  'EY': 'https://www.ey.com/en_us/careers',
+  'IBM Consulting': 'https://www.ibm.com/careers/early-career',
+  'Citi': 'https://jobs.citi.com/students-and-graduates',
+};
+
+let data = load();
+// fill in careers links on any tracker company whose link is still empty (idempotent)
+data.internships.forEach(it => { if (!it.url && COMPANY_URLS[it.company]) it.url = COMPANY_URLS[it.company]; });
+
+function uid() { return Math.random().toString(36).slice(2, 10); }
+
+function load() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      SECTIONS.forEach(s => { if (!Array.isArray(d[s])) d[s] = []; });
+      if (!d.ops || typeof d.ops !== 'object') d.ops = { checks: {}, week: {} };
+      d.ops.checks = d.ops.checks || {}; d.ops.week = d.ops.week || {};
+      return d;
+    }
+  } catch (e) { console.warn('load failed', e); }
+  return structuredClone(DEFAULT_DATA);
+}
+
+function save() {
+  localStorage.setItem(STORE_KEY, JSON.stringify(data));
+  document.getElementById('saveStamp').textContent = 'Saved ' + new Date().toLocaleTimeString();
+  renderStats();
+}
+
+// ---------------- schemas ----------------
+const SCHEMAS = {
+  roadmap: {
+    label: 'Milestone',
+    fields: [
+      { key: 'title', label: 'Milestone', type: 'text', required: true },
+      { key: 'phase', label: 'Phase', type: 'select', options: PHASES },
+      { key: 'due', label: 'Target date', type: 'date' },
+      { key: 'status', label: 'Status', type: 'select', options: ['not-started','in-progress','completed'] },
+      { key: 'notes', label: 'Notes', type: 'textarea' },
+    ],
+  },
+  internships: {
+    label: 'Internship',
+    fields: [
+      { key: 'title', label: 'Role title', type: 'text', required: true },
+      { key: 'company', label: 'Company', type: 'text' },
+      { key: 'tier', label: 'Tier (T1 = primary target)', type: 'select', options: ['T1','T2','T3'] },
+      { key: 'url', label: 'Link', type: 'text' },
+      { key: 'deadline', label: 'Deadline', type: 'date' },
+      { key: 'status', label: 'Status', type: 'select', options: ['interested','applied','interview','offer','rejected'] },
+      { key: 'notes', label: 'Notes', type: 'textarea' },
+    ],
+  },
+  jobs: {
+    label: 'Job',
+    fields: [
+      { key: 'title', label: 'Role title', type: 'text', required: true },
+      { key: 'company', label: 'Company', type: 'text' },
+      { key: 'kind', label: 'Type', type: 'select', options: ['part-time','full-time','contract','freelance'] },
+      { key: 'url', label: 'Link', type: 'text' },
+      { key: 'deadline', label: 'Deadline', type: 'date' },
+      { key: 'status', label: 'Status', type: 'select', options: ['interested','applied','interview','offer','rejected'] },
+      { key: 'notes', label: 'Notes', type: 'textarea' },
+    ],
+  },
+  programs: {
+    label: 'Program',
+    fields: [
+      { key: 'title', label: 'Program name', type: 'text', required: true },
+      { key: 'org', label: 'Organization', type: 'text' },
+      { key: 'kind', label: 'Type', type: 'select', options: ['apprenticeship','fellowship','bootcamp','rotational program','accelerator','course','other'] },
+      { key: 'url', label: 'Link', type: 'text' },
+      { key: 'deadline', label: 'Deadline', type: 'date' },
+      { key: 'status', label: 'Status', type: 'select', options: ['interested','applied','interview','offer','enrolled','rejected'] },
+      { key: 'notes', label: 'Notes', type: 'textarea' },
+    ],
+  },
+  coffee: {
+    label: 'Person',
+    fields: [
+      { key: 'title', label: 'Name', type: 'text', required: true },
+      { key: 'role', label: 'Role / Company', type: 'text' },
+      { key: 'contact', label: 'Contact (LinkedIn / email)', type: 'text' },
+      { key: 'date', label: 'Chat date', type: 'date' },
+      { key: 'status', label: 'Status', type: 'select', options: ['todo','reached-out','scheduled','done'] },
+      { key: 'notes', label: 'Notes / talking points', type: 'textarea' },
+    ],
+  },
+  resources: {
+    label: 'Resource',
+    fields: [
+      { key: 'title', label: 'Title', type: 'text', required: true },
+      { key: 'url', label: 'URL', type: 'text' },
+      { key: 'notes', label: 'Notes', type: 'textarea' },
+    ],
+  },
+};
+
+// ---------------- tabs ----------------
+document.getElementById('nav').addEventListener('click', e => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+});
+
+// ---------------- modal / forms ----------------
+let editing = { section: null, id: null };
+
+function openForm(section, id) {
+  editing = { section, id: id || null };
+  const schema = SCHEMAS[section];
+  const item = id ? data[section].find(x => x.id === id) : {};
+  document.getElementById('modalTitle').textContent = (id ? 'Edit ' : 'Add ') + schema.label;
+  const form = document.getElementById('modalForm');
+  form.innerHTML = schema.fields.map(f => {
+    const val = item[f.key] ?? '';
+    if (f.type === 'select') {
+      return `<label>${f.label}</label><select name="${f.key}">` +
+        f.options.map(o => `<option ${o === val ? 'selected' : ''}>${o}</option>`).join('') + '</select>';
+    }
+    if (f.type === 'textarea') {
+      return `<label>${f.label}</label><textarea name="${f.key}">${esc(val)}</textarea>`;
+    }
+    return `<label>${f.label}</label><input type="${f.type}" name="${f.key}" value="${esc(val)}" ${f.required ? 'required' : ''}>`;
+  }).join('') +
+  `<div class="modal-actions">
+     <button type="button" class="btn secondary" onclick="closeForm()">Cancel</button>
+     <button type="submit" class="btn">Save</button>
+   </div>`;
+  document.getElementById('modalOverlay').classList.add('open');
+  form.querySelector('input,select,textarea')?.focus();
+}
+
+function closeForm() { document.getElementById('modalOverlay').classList.remove('open'); }
+
+function saveForm(e) {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const obj = {};
+  SCHEMAS[editing.section].fields.forEach(f => obj[f.key] = (fd.get(f.key) || '').toString().trim());
+  if (editing.id) {
+    const it = data[editing.section].find(x => x.id === editing.id);
+    Object.assign(it, obj);
+  } else {
+    obj.id = uid();
+    data[editing.section].unshift(obj);
+  }
+  save(); render(); closeForm();
+}
+
+function removeItem(section, id) {
+  const it = data[section].find(x => x.id === id);
+  if (!confirm(`Remove "${it?.title}"?`)) return;
+  data[section] = data[section].filter(x => x.id !== id);
+  save(); render();
+}
+
+function setStatus(section, id, status) {
+  const it = data[section].find(x => x.id === id);
+  if (it) { it.status = status; save(); render(); }
+}
+
+// ---------------- rendering ----------------
+function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function daysUntil(d) {
+  if (!d) return null;
+  return Math.ceil((new Date(d + 'T23:59') - new Date()) / 86400000);
+}
+
+function deadlineHtml(d) {
+  const n = daysUntil(d);
+  if (n === null) return '';
+  if (n < 0) return `<span class="deadline soon">⏰ deadline passed (${esc(d)})</span>`;
+  if (n <= 7) return `<span class="deadline soon">⏰ due in ${n}d (${esc(d)})</span>`;
+  return `<span class="deadline">📅 ${esc(d)} (${n}d)</span>`;
+}
+
+function statusSelect(section, id, current, options) {
+  return `<select class="status-select" onchange="setStatus('${section}','${id}',this.value)">` +
+    options.map(o => `<option ${o === current ? 'selected' : ''}>${o}</option>`).join('') + '</select>';
+}
+
+function cardHtml(section, it) {
+  const schema = SCHEMAS[section];
+  const statusField = schema.fields.find(f => f.key === 'status');
+  const titleHtml = it.url
+    ? `<a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.title)}</a>`
+    : esc(it.title);
+  const metaBits = [];
+  if (it.company) metaBits.push(esc(it.company));
+  if (it.org) metaBits.push(esc(it.org));
+  if (it.role) metaBits.push(esc(it.role));
+  if (it.kind) metaBits.push(esc(it.kind));
+  if (it.tier) metaBits.push(`<span class="badge ${esc(it.tier.toLowerCase())}">${esc(it.tier)}</span>`);
+  if (it.contact) metaBits.push(esc(it.contact));
+  if (it.phase) metaBits.push(esc(it.phase));
+  if (it.date) metaBits.push('🗓 ' + esc(it.date));
+  const dl = deadlineHtml(it.deadline || it.due);
+  return `<div class="card">
+    <div class="info">
+      <div class="title">${it.status ? `<span class="badge ${esc(it.status)}">${esc(it.status)}</span> ` : ''}${titleHtml}</div>
+      ${metaBits.length ? `<div class="meta">${metaBits.join(' · ')}</div>` : ''}
+      ${dl ? `<div class="meta">${dl}</div>` : ''}
+      ${it.notes ? `<div class="notes">${esc(it.notes)}</div>` : ''}
+    </div>
+    <div class="actions">
+      ${statusField ? statusSelect(section, it.id, it.status, statusField.options) : ''}
+      <button class="btn small secondary" onclick="openForm('${section}','${it.id}')">Edit</button>
+      <button class="btn danger" onclick="removeItem('${section}','${it.id}')">✕</button>
+    </div>
+  </div>`;
+}
+
+function filtered(section) {
+  let items = data[section];
+  const q = document.getElementById('search-' + section)?.value.toLowerCase() || '';
+  const st = document.getElementById('filter-' + section)?.value || '';
+  if (q) items = items.filter(it => JSON.stringify(it).toLowerCase().includes(q));
+  if (st) items = items.filter(it => it.status === st);
+  return items;
+}
+
+function render() {
+  // roadmap grouped by phase
+  const phases = PHASES;
+  const rl = document.getElementById('list-roadmap');
+  const rItems = data.roadmap;
+  if (!rItems.length) {
+    rl.innerHTML = `<div class="empty">No milestones yet.<div class="hint">Add milestones, or paste your Claude conversation into Claude Code and ask it to seed this dashboard.</div></div>`;
+  } else {
+    rl.innerHTML = phases.map(ph => {
+      const items = rItems.filter(it => it.phase === ph);
+      if (!items.length) return '';
+      return `<div class="phase"><div class="phase-header"><h3>${ph}</h3><div class="line"></div></div>` +
+        items.map(it => cardHtml('roadmap', it)).join('') + '</div>';
+    }).join('') || rItems.map(it => cardHtml('roadmap', it)).join('');
+    // items with unknown phase
+    const orphans = rItems.filter(it => !phases.includes(it.phase));
+    if (orphans.length) rl.innerHTML += `<div class="phase"><div class="phase-header"><h3>Other</h3><div class="line"></div></div>` + orphans.map(it => cardHtml('roadmap', it)).join('') + '</div>';
+  }
+
+  ['internships','jobs','programs','coffee','resources'].forEach(section => {
+    const el = document.getElementById('list-' + section);
+    const items = filtered(section);
+    el.innerHTML = items.length
+      ? items.map(it => cardHtml(section, it)).join('')
+      : `<div class="empty">Nothing here yet.<div class="hint">Use "+ Add" above, or pull opportunities from the 📡 Live Feed tab.</div></div>`;
+  });
+  renderOps();
+  renderStats();
+}
+
+function renderStats() {
+  const active = ['internships','jobs','programs'].flatMap(s => data[s]);
+  const applied = active.filter(x => ['applied','interview','offer'].includes(x.status)).length;
+  const interviews = active.filter(x => x.status === 'interview').length;
+  const offers = active.filter(x => x.status === 'offer').length;
+  const chatsDone = data.coffee.filter(x => x.status === 'done').length;
+  const milestonesDone = data.roadmap.filter(x => x.status === 'completed').length;
+  const soon = active.filter(x => { const n = daysUntil(x.deadline); return n !== null && n >= 0 && n <= 7; }).length;
+  const wkApps = (data.ops.week[weekKey()] || {}).apps || 0;
+  document.getElementById('statsRow').innerHTML = [
+    [active.length, 'Tracked'],
+    [applied, 'Applied+'],
+    [interviews, 'Interviews'],
+    [offers, 'Offers'],
+    [wkApps + '/12', 'Apps this wk'],
+    [chatsDone + '/' + data.coffee.length, 'Coffee chats'],
+    [milestonesDone + '/' + data.roadmap.length, 'Milestones'],
+    [soon, 'Due ≤7d'],
+  ].map(([n, l]) => `<div class="stat"><div class="num">${n}</div><div class="lbl">${l}</div></div>`).join('');
+}
+
+// ---------------- import / export ----------------
+function exportData() {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'career-dashboard-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+
+function importData(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const d = JSON.parse(reader.result);
+      SECTIONS.forEach(s => { if (!Array.isArray(d[s])) d[s] = []; });
+      data = d; save(); render();
+      alert('Imported successfully.');
+    } catch (err) { alert('Import failed: ' + err.message); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// ---------------- live feed ----------------
+const FEED_SOURCES = [
+  {
+    name: 'SimplifyJobs Summer 2026',
+    url: 'https://raw.githubusercontent.com/SimplifyJobs/Summer2026-Internships/dev/README.md',
+    fallback: 'https://raw.githubusercontent.com/SimplifyJobs/Summer2026-Internships/main/README.md',
+  },
+  {
+    name: 'speedyapply 2026 AI College Jobs',
+    url: 'https://raw.githubusercontent.com/speedyapply/2026-AI-College-Jobs/main/README.md',
+  },
+];
+
+let feedResults = [];
+
+async function fetchOne(src) {
+  let res = await fetch(src.url);
+  if (!res.ok && src.fallback) res = await fetch(src.fallback);
+  if (!res.ok) throw new Error(src.name + ': HTTP ' + res.status);
+  return { name: src.name, md: await res.text() };
+}
+
+function parseMarkdownTables(md, sourceName) {
+  const rows = [];
+  let lastCompany = '';
+  for (const line of md.split('\n')) {
+    if (!line.startsWith('|')) continue;
+    const cells = line.split('|').slice(1, -1).map(c => c.trim());
+    if (cells.length < 3) continue;
+    if (/^[-: ]+$/.test(cells[0]) || /company/i.test(cells[0])) continue;
+    let company = stripMd(cells[0]);
+    if (company === '↳' || company === '') company = lastCompany; else lastCompany = company;
+    const role = stripMd(cells[1]);
+    const location = stripMd(cells[2] || '');
+    // find first link in the row (prefer application-link cell)
+    let url = '';
+    for (let i = cells.length - 1; i >= 0; i--) {
+      const m = cells[i].match(/\((https?:\/\/[^)\s]+)\)/) || cells[i].match(/href="(https?:\/\/[^"]+)"/);
+      if (m) { url = m[1]; break; }
+    }
+    if (!role || !company) continue;
+    rows.push({ company, role, location, url, source: sourceName });
+  }
+  return rows;
+}
+
+function stripMd(s) {
+  return s
+    .replace(/<[^>]+>/g, '')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/\*\*/g, '')
+    .replace(/🛂|🇺🇸|🔒|❌|✅|🎓/g, '')
+    .trim();
+}
+
+async function fetchFeed() {
+  const statusEl = document.getElementById('feed-status');
+  statusEl.className = 'feed-status';
+  statusEl.innerHTML = '<span class="spinner"></span>Fetching latest listings from GitHub…';
+  document.getElementById('list-feed').innerHTML = '';
+  const keywords = document.getElementById('feed-keywords').value
+    .split(',').map(k => k.trim().toLowerCase()).filter(Boolean);
+  try {
+    const results = await Promise.allSettled(FEED_SOURCES.map(fetchOne));
+    let all = [];
+    const errs = [];
+    for (const r of results) {
+      if (r.status === 'fulfilled') all = all.concat(parseMarkdownTables(r.value.md, r.value.name));
+      else errs.push(r.reason.message);
+    }
+    feedResults = keywords.length
+      ? all.filter(row => {
+          const hay = (row.company + ' ' + row.role).toLowerCase();
+          return keywords.some(k => hay.includes(k));
+        })
+      : all;
+    // de-dup and drop closed listings
+    const seen = new Set();
+    feedResults = feedResults.filter(r => {
+      if (/closed/i.test(r.role)) return false;
+      const key = (r.company + '|' + r.role).toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key); return true;
+    }).slice(0, 300);
+    statusEl.textContent = `${feedResults.length} matching openings (of ${all.length} total) — fetched ${new Date().toLocaleTimeString()}` + (errs.length ? ' · errors: ' + errs.join('; ') : '');
+    renderFeed();
+  } catch (err) {
+    statusEl.className = 'feed-status err';
+    statusEl.textContent = 'Fetch failed: ' + err.message + ' — check your internet connection.';
+  }
+}
+
+function trackedKey(it) { return ((it.company || '') + '|' + it.title).toLowerCase(); }
+
+function renderFeed() {
+  const el = document.getElementById('list-feed');
+  const trackedKeys = new Set(data.internships.concat(data.jobs).map(trackedKey));
+  el.innerHTML = feedResults.length ? feedResults.map((r, i) => {
+    const key = (r.company + '|' + r.role).toLowerCase();
+    const already = trackedKeys.has(key);
+    return `<div class="card">
+      <div class="info">
+        <div class="title">${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.role)}</a>` : esc(r.role)}</div>
+        <div class="meta">${esc(r.company)}${r.location ? ' · ' + esc(r.location) : ''} · <em>${esc(r.source)}</em></div>
+      </div>
+      <div class="actions">
+        ${already
+          ? '<span class="badge done">tracked ✓</span>'
+          : `<button class="btn small" onclick="addFromFeed(${i})">+ Track</button>`}
+      </div>
+    </div>`;
+  }).join('') : '<div class="empty">No matching openings. Try broader keywords or click Refresh.</div>';
+}
+
+function addFromFeed(i) {
+  const r = feedResults[i];
+  data.internships.unshift({
+    id: uid(), title: r.role, company: r.company, url: r.url,
+    deadline: '', status: 'interested',
+    notes: (r.location ? r.location + ' · ' : '') + 'from ' + r.source,
+  });
+  save(); render(); renderFeed();
+}
+
+// ---------------- daily ops ----------------
+const OPS_TASKS = {
+  weekday: [
+    { id: 'triage', t: 'Morning triage (30 min, hard stop)', d: 'Scan the Live Feed / Simplify list, LinkedIn alerts, and Handshake. Tracker companies: same-day apply; other matches: within 48h. Update statuses. This is triage, not deep work.' },
+    { id: 'network', t: 'Midday network touch (15 min)', d: 'One of: send 1 connection request (feeds your 5/week), reply to anyone who accepted, one substantive comment on a target contact’s post, or one thank-you/follow-up.' },
+    { id: 'tech', t: 'Evening technical block (45–60 min)', d: 'One NeetCode 150 problem done properly: 25 min attempt → study the optimal solution → re-implement from scratch. Converts to company-specific prep when OAs land.' },
+  ],
+  friday: [
+    { id: 'triage', t: 'Morning triage (30 min, hard stop)', d: 'Scan the Live Feed / Simplify list, LinkedIn alerts, and Handshake. Tracker companies: same-day apply.' },
+    { id: 'network', t: 'Midday network touch (15 min)', d: 'One connection request, reply, comment, or thank-you.' },
+    { id: 'off', t: 'Evening OFF — always', d: 'Burnout in October is how people bomb November interviews. Check this box by doing nothing.' },
+  ],
+  saturday: [
+    { id: 'build', t: 'Deep build block (2 hrs)', d: 'The agentic AI project until it ships (target: October), then part-time startup work if you land one.' },
+    { id: 'case', t: 'Decomposition / case practice (20 min, out loud)', d: '“Customer has messy problem X — design the deployment.” Clarifying questions → break into chunks → simple MVP → iterate while thinking out loud.' },
+  ],
+  sunday: [
+    { id: 'command', t: 'Command center (90 min)', d: 'Batch-apply to hit 10–12 quality apps/week, send the 5 cold emails (part-time search), review the tracker, plan the week’s chats and follow-ups, send any “took your advice, here’s what happened” second touches.' },
+    { id: 'plan', t: 'Slot this week’s 2 coffee-chat windows', d: 'Fixed windows (e.g. Tue/Thu 4–5pm) make scheduling emails easy.' },
+  ],
+};
+
+const WEEK_TARGETS = [
+  { id: 'apps', label: 'Quality applications', target: 12, targetLabel: '10–12' },
+  { id: 'chats', label: 'Coffee chats', target: 2, targetLabel: '2' },
+  { id: 'lc', label: 'LeetCode problems', target: 7, targetLabel: '5–7' },
+  { id: 'cases', label: 'Case / decomposition practice', target: 2, targetLabel: '1–2' },
+  { id: 'proj', label: 'Project hours', target: 4, targetLabel: '3–4' },
+  { id: 'cold', label: 'Cold emails (part-time search)', target: 5, targetLabel: '5' },
+];
+
+const OPS_PHASES = [
+  { from: '2026-06-01', to: '2026-08-31', name: 'Now – late August (at Citi)', desc: 'Script project is priority one; recruiting runs at 60%. Daily triage for early postings (Salesforce, Google, Databricks), 5 outreach/week (Jasleen, Shreya, Harini), LeetCode 3–4/week, STEM Aspire in, return-offer conversation by early August.' },
+  { from: '2026-09-01', to: '2026-11-15', name: 'September – mid November (peak)', desc: 'Full template — this is the season everything was built for. ~12–14 hrs/week. Career fair week: recruiter collection + same-week follow-ups. STAR bank written in September. Agent project ships in October.' },
+  { from: '2026-10-01', to: '2026-12-10', name: 'When OAs / interviews land (Oct–Nov)', desc: 'Evening block converts to interview prep: 2–3 timed 70-min sets before each OA, company research, 2 mock behavioral runs, one full decomposition case out loud for FDE/deployment loops.' },
+  { from: '2026-12-11', to: '2026-12-31', name: 'December', desc: 'Finals, then genuine rest. Recruiting drops to responding to recruiters only.' },
+  { from: '2027-01-01', to: '2027-05-31', name: 'January – May (spring)', desc: 'BTT industry project + part-time startup become the deep-work blocks. Recruiting = 15 min/day maintenance triage if you’ve converted an offer; full template if not.' },
+];
+
+function todayKey() { return new Date().toISOString().slice(0, 10); }
+function weekKey() {
+  const d = new Date(); const day = (d.getDay() + 6) % 7; // Mon=0
+  const mon = new Date(d); mon.setDate(d.getDate() - day);
+  return 'wk-' + mon.toISOString().slice(0, 10);
+}
+function opsTasksForToday() {
+  const dow = new Date().getDay();
+  if (dow === 0) return OPS_TASKS.sunday;
+  if (dow === 5) return OPS_TASKS.friday;
+  if (dow === 6) return OPS_TASKS.saturday;
+  return OPS_TASKS.weekday;
+}
+function toggleOps(id) {
+  const k = todayKey();
+  data.ops.checks[k] = data.ops.checks[k] || {};
+  data.ops.checks[k][id] = !data.ops.checks[k][id];
+  // keep only the last 30 days of checks
+  Object.keys(data.ops.checks).sort().slice(0, -30).forEach(old => delete data.ops.checks[old]);
+  save(); renderOps();
+}
+function bumpWeek(id, delta) {
+  const k = weekKey();
+  data.ops.week[k] = data.ops.week[k] || {};
+  data.ops.week[k][id] = Math.max(0, (data.ops.week[k][id] || 0) + delta);
+  Object.keys(data.ops.week).sort().slice(0, -12).forEach(old => delete data.ops.week[old]);
+  save(); renderOps();
+}
+function renderOps() {
+  const el = document.getElementById('ops-daily');
+  if (!el) return;
+  const now = new Date();
+  document.getElementById('ops-today-h').textContent = 'Today — ' + now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+  const checks = data.ops.checks[todayKey()] || {};
+  el.innerHTML = opsTasksForToday().map(t => `
+    <label class="check-card ${checks[t.id] ? 'done' : ''}">
+      <input type="checkbox" ${checks[t.id] ? 'checked' : ''} onchange="toggleOps('${t.id}')">
+      <div><div class="t">${t.t}</div><div class="d">${t.d}</div></div>
+    </label>`).join('');
+  const wk = data.ops.week[weekKey()] || {};
+  document.getElementById('ops-week').innerHTML = WEEK_TARGETS.map(w => {
+    const v = wk[w.id] || 0;
+    return `<div class="counter">
+      <div class="lbl">${w.label} — target ${w.targetLabel}</div>
+      <div class="row">
+        <button onclick="bumpWeek('${w.id}',-1)">−</button>
+        <div class="val ${v >= w.target ? 'hit' : ''}">${v}/${w.target}</div>
+        <button onclick="bumpWeek('${w.id}',1)">+</button>
+      </div>
+    </div>`;
+  }).join('');
+  const today = todayKey();
+  document.getElementById('ops-phases').innerHTML = OPS_PHASES.map(p => `
+    <div class="phase-card ${today >= p.from && today <= p.to ? 'current' : ''}">
+      <div class="name">${p.name}</div><div class="desc">${p.desc}</div>
+    </div>`).join('');
+}
+
+// ---------------- init ----------------
+render();
+</script>
+</body>
+</html>
