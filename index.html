@@ -122,6 +122,19 @@
   .phase-card .name { font-weight: 700; font-size: 13.5px; }
   .phase-card.current .name::after { content: ' — you are here'; color: var(--accent); font-weight: 600; }
   .phase-card .desc { color: var(--muted); margin-top: 4px; }
+  /* due-today strip */
+  .next-action { color: var(--accent2); }
+  #dueStrip { margin-bottom: 20px; }
+  #dueStrip .due-box { background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 12px; padding: 12px 16px; }
+  #dueStrip .due-title { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); margin-bottom: 8px; }
+  #dueStrip .due-row { display: flex; gap: 8px; align-items: baseline; font-size: 13px; padding: 3px 0; cursor: pointer; }
+  #dueStrip .due-row:hover .due-what { text-decoration: underline; }
+  #dueStrip .due-when { font-weight: 700; min-width: 74px; flex-shrink: 0; }
+  #dueStrip .due-when.overdue { color: var(--red); }
+  #dueStrip .due-when.today { color: var(--orange); }
+  #dueStrip .due-when.week { color: var(--yellow); }
+  #dueStrip .due-what { color: var(--text); }
+  #dueStrip .due-kind { color: var(--muted); font-size: 12px; }
   select.status-select {
     background: var(--panel2); border: 1px solid var(--border); color: var(--text);
     padding: 4px 8px; border-radius: 6px; font-size: 12px; cursor: pointer;
@@ -192,6 +205,8 @@
 </header>
 
 <main>
+
+  <div id="dueStrip"></div>
 
   <!-- ROADMAP -->
   <section class="tab active" id="tab-roadmap">
@@ -489,6 +504,9 @@ const SCHEMAS = {
       { key: 'tier', label: 'Tier (T1 = primary target)', type: 'select', options: ['T1','T2','T3'] },
       { key: 'url', label: 'Link', type: 'text' },
       { key: 'deadline', label: 'Deadline', type: 'date' },
+      { key: 'applied', label: 'Date applied', type: 'date' },
+      { key: 'next', label: 'Next action', type: 'text' },
+      { key: 'nextdue', label: 'Next action due', type: 'date' },
       { key: 'status', label: 'Status', type: 'select', options: ['interested','applied','interview','offer','rejected'] },
       { key: 'notes', label: 'Notes', type: 'textarea' },
     ],
@@ -501,6 +519,9 @@ const SCHEMAS = {
       { key: 'kind', label: 'Type', type: 'select', options: ['part-time','full-time','contract','freelance'] },
       { key: 'url', label: 'Link', type: 'text' },
       { key: 'deadline', label: 'Deadline', type: 'date' },
+      { key: 'applied', label: 'Date applied', type: 'date' },
+      { key: 'next', label: 'Next action', type: 'text' },
+      { key: 'nextdue', label: 'Next action due', type: 'date' },
       { key: 'status', label: 'Status', type: 'select', options: ['interested','applied','interview','offer','rejected'] },
       { key: 'notes', label: 'Notes', type: 'textarea' },
     ],
@@ -513,6 +534,9 @@ const SCHEMAS = {
       { key: 'kind', label: 'Type', type: 'select', options: ['apprenticeship','fellowship','bootcamp','rotational program','accelerator','course','other'] },
       { key: 'url', label: 'Link', type: 'text' },
       { key: 'deadline', label: 'Deadline', type: 'date' },
+      { key: 'applied', label: 'Date applied', type: 'date' },
+      { key: 'next', label: 'Next action', type: 'text' },
+      { key: 'nextdue', label: 'Next action due', type: 'date' },
       { key: 'status', label: 'Status', type: 'select', options: ['interested','applied','interview','offer','enrolled','rejected'] },
       { key: 'notes', label: 'Notes', type: 'textarea' },
     ],
@@ -524,6 +548,7 @@ const SCHEMAS = {
       { key: 'role', label: 'Role / Company', type: 'text' },
       { key: 'contact', label: 'Contact (LinkedIn / email)', type: 'text' },
       { key: 'date', label: 'Chat date', type: 'date' },
+      { key: 'followup', label: 'Follow-up due', type: 'date' },
       { key: 'status', label: 'Status', type: 'select', options: ['todo','reached-out','scheduled','done'] },
       { key: 'notes', label: 'Notes / talking points', type: 'textarea' },
     ],
@@ -639,13 +664,19 @@ function cardHtml(section, it) {
   if (it.tier) metaBits.push(`<span class="badge ${esc(it.tier.toLowerCase())}">${esc(it.tier)}</span>`);
   if (it.contact) metaBits.push(esc(it.contact));
   if (it.phase) metaBits.push(esc(it.phase));
-  if (it.date) metaBits.push('🗓 ' + esc(it.date));
+  if (it.date) metaBits.push('🗓 chat ' + esc(it.date));
+  if (it.applied) metaBits.push('📤 applied ' + esc(it.applied));
   const dl = deadlineHtml(it.deadline || it.due);
+  const fu = it.followup ? deadlineHtml(it.followup) : '';
+  const nextHtml = (it.next || it.nextdue)
+    ? `<div class="meta next-action">→ ${esc(it.next || 'next action')}${it.nextdue ? ' ' + deadlineHtml(it.nextdue) : ''}</div>` : '';
   return `<div class="card">
     <div class="info">
       <div class="title">${it.status ? `<span class="badge ${esc(it.status)}">${esc(it.status)}</span> ` : ''}${titleHtml}</div>
       ${metaBits.length ? `<div class="meta">${metaBits.join(' · ')}</div>` : ''}
       ${dl ? `<div class="meta">${dl}</div>` : ''}
+      ${fu ? `<div class="meta">follow-up: ${fu}</div>` : ''}
+      ${nextHtml}
       ${it.notes ? `<div class="notes">${esc(it.notes)}</div>` : ''}
     </div>
     <div class="actions">
@@ -691,6 +722,7 @@ function render() {
       ? items.map(it => cardHtml(section, it)).join('')
       : `<div class="empty">Nothing here yet.<div class="hint">Use "+ Add" above, or pull opportunities from the 📡 Live Feed tab.</div></div>`;
   });
+  renderDueStrip();
   renderOps();
   renderStats();
 }
@@ -862,6 +894,53 @@ function addFromFeed(i) {
     notes: (r.location ? r.location + ' · ' : '') + 'from ' + r.source,
   });
   save(); render(); renderFeed();
+}
+
+// ---------------- due-today strip ----------------
+const TAB_LABELS = { roadmap: 'roadmap', internships: 'internship', jobs: 'job', programs: 'program', coffee: 'coffee chat' };
+
+function gotoTab(tab) {
+  document.querySelector(`nav button[data-tab="${tab}"]`)?.click();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function collectDue() {
+  const out = [];
+  const push = (section, it, date, what) => {
+    const n = daysUntil(date);
+    if (n === null || n > 7) return;
+    out.push({ section, n, date, what, title: it.title });
+  };
+  const CLOSED = ['offer', 'rejected'];
+  data.roadmap.forEach(it => { if (it.status !== 'completed') push('roadmap', it, it.due, 'milestone due'); });
+  ['internships', 'jobs', 'programs'].forEach(s => data[s].forEach(it => {
+    if (!CLOSED.includes(it.status)) push(s, it, it.deadline, 'application deadline');
+    if (it.status !== 'rejected') push(s, it, it.nextdue, it.next ? 'next: ' + it.next : 'next action');
+  }));
+  data.coffee.forEach(it => {
+    push('coffee', it, it.followup, 'follow-up');
+    if (it.status === 'scheduled') push('coffee', it, it.date, 'chat scheduled');
+  });
+  return out.sort((a, b) => a.n - b.n);
+}
+
+function renderDueStrip() {
+  const el = document.getElementById('dueStrip');
+  if (!el) return;
+  const items = collectDue();
+  if (!items.length) { el.innerHTML = ''; return; }
+  const when = n => n < 0 ? [`${-n}d overdue`, 'overdue'] : n === 0 ? ['today', 'today'] : [`in ${n}d`, 'week'];
+  el.innerHTML = `<div class="due-box">
+    <div class="due-title">⏰ Needs attention — next 7 days</div>
+    ${items.map(it => {
+      const [label, cls] = when(it.n);
+      return `<div class="due-row" onclick="gotoTab('${it.section}')">
+        <span class="due-when ${cls}">${label}</span>
+        <span class="due-what">${esc(it.title)}</span>
+        <span class="due-kind">${esc(it.what)} · ${TAB_LABELS[it.section]}</span>
+      </div>`;
+    }).join('')}
+  </div>`;
 }
 
 // ---------------- daily ops ----------------
