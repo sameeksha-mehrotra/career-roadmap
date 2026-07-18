@@ -300,6 +300,20 @@
       <button class="btn" onclick="openForm('programs')">+ Add program</button>
     </div>
     <div id="list-programs"></div>
+
+    <div class="ops-h" style="margin-top:28px"><h3>📡 Programs &amp; apprenticeships live feed</h3><div class="line"></div></div>
+    <div class="src-row">Sources:
+      <code>CS Everything but Internships</code>
+      <code>AI Residency List</code>
+      <code>Awesome CS Opportunities</code>
+      <code>+ program-titled roles from all 20 internship sources</code>
+    </div>
+    <div class="toolbar">
+      <input type="text" id="programs-feed-keywords" placeholder="Filter keywords (comma-separated) — leave empty to see everything">
+      <button class="btn" onclick="fetchProgramsFeed()">🔄 Check program sources</button>
+    </div>
+    <div class="feed-status" id="programs-feed-status">Fellowships, apprenticeships, residencies, insight programs, and rotational programs from curated GitHub lists — plus any apprenticeship/fellowship/residency postings found live on the internship sources and company job boards.</div>
+    <div id="list-programs-feed"></div>
   </section>
 
   <!-- COFFEE CHATS -->
@@ -858,7 +872,7 @@ const FEED_SOURCES = [
   { type: 'ashby', name: 'Writer board', board: 'writer', company: 'Writer' },
 ];
 
-const EARLY_CAREER_RE = /\b(intern|internship|co-?op|university|campus|new ?grad|early career|apprentice)\b/i;
+const EARLY_CAREER_RE = /\b(intern|internship|co-?op|university|campus|new ?grad|early career|apprentice(ship)?|fellow(ship)?|residen(cy|t)|rotational)\b/i;
 
 // short keywords ("AI", "ML") match whole words only, so "AI" doesn't hit "Chain"
 function keywordMatch(hay, k) {
@@ -1121,6 +1135,129 @@ function addFromJobsFeed(i) {
     notes: (r.location ? r.location + ' · ' : '') + 'from ' + r.source,
   });
   save(); render(); renderJobsFeed();
+}
+
+// ---------------- programs & apprenticeships feed (programs tab) ----------------
+const PROGRAM_SOURCES = [
+  { name: 'CS Everything but Internships', url: 'https://raw.githubusercontent.com/Julian048/CS-Everything-but-Internships/main/README.md', parse: 'nameTable' },
+  { name: 'AI Residency List', url: 'https://raw.githubusercontent.com/SouravDutta91/AI-Residency-List/master/README.md', parse: 'nameTable' },
+  { name: 'Awesome CS Opportunities', url: 'https://raw.githubusercontent.com/anu0012/awesome-computer-science-opportunities/master/README.md', parse: 'bullets' },
+];
+const PROGRAM_RE = /\b(apprentice(ship)?|fellow(ship)?|residen(cy|t)|rotational|scholars?|insight|externship)\b/i;
+
+let programsFeedResults = [];
+
+// | [Name](url) | col | col — program lists put the name first, link anywhere
+function parseNameTables(md, sourceName) {
+  const rows = [];
+  for (const line of md.split('\n')) {
+    if (!line.startsWith('|')) continue;
+    const cells = line.split('|').slice(1, -1).map(c => c.trim());
+    if (cells.length < 2) continue;
+    const name = stripMd(cells[0]);
+    if (!name || /^[-: ]+$/.test(cells[0]) || /^(name|from)$/i.test(name)) continue;
+    let url = '';
+    for (const c of cells) {
+      const m = c.match(/\((https?:\/\/[^)\s]+)\)/);
+      if (m) { url = m[1]; break; }
+    }
+    rows.push({ name, detail: stripMd(cells.slice(1).join(' · ')).slice(0, 140), url, source: sourceName });
+  }
+  return rows;
+}
+
+// - [Name](url) description — with ## section headings carried into the detail
+function parseBulletList(md, sourceName) {
+  const rows = []; let section = '';
+  for (const line of md.split('\n')) {
+    const h = line.match(/^#{2,4}\s+(.+)/);
+    if (h) { section = /content|contribut|license/i.test(h[1]) ? '' : h[1].trim(); continue; }
+    const m = line.match(/^\s*[-*]\s*\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)\s*[-–—:]?\s*(.*)/);
+    if (!m) continue;
+    rows.push({ name: m[1].trim(), detail: [section, stripMd(m[3]).slice(0, 100)].filter(Boolean).join(' · '), url: m[2], source: sourceName });
+  }
+  return rows;
+}
+
+async function fetchProgramSource(src) {
+  const res = await fetch(src.url);
+  if (!res.ok) throw new Error(src.name + ': HTTP ' + res.status);
+  const md = await res.text();
+  return src.parse === 'bullets' ? parseBulletList(md, src.name) : parseNameTables(md, src.name);
+}
+
+async function fetchProgramsFeed() {
+  const statusEl = document.getElementById('programs-feed-status');
+  statusEl.className = 'feed-status';
+  statusEl.innerHTML = '<span class="spinner"></span>Checking program lists + scanning all internship sources for program-shaped roles…';
+  document.getElementById('list-programs-feed').innerHTML = '';
+  const keywords = document.getElementById('programs-feed-keywords').value
+    .split(',').map(k => k.trim().toLowerCase()).filter(Boolean);
+  try {
+    const results = await Promise.allSettled([
+      ...PROGRAM_SOURCES.map(fetchProgramSource),
+      fetchAllRows().then(({ all }) => all
+        .filter(r => PROGRAM_RE.test(r.role))
+        .map(r => ({ name: r.role, detail: [r.company, r.location].filter(Boolean).join(' · '), url: r.url, source: r.source }))),
+    ]);
+    let all = []; const errs = [];
+    for (const r of results) {
+      if (r.status === 'fulfilled') all = all.concat(r.value);
+      else errs.push(r.reason.message);
+    }
+    if (!all.length) throw new Error(errs.join('; ') || 'no programs fetched');
+    const seen = new Set();
+    all = all.filter(r => {
+      if (!r.name) return false;
+      const key = r.name.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key); return true;
+    });
+    programsFeedResults = (keywords.length
+      ? all.filter(r => {
+          const hay = (r.name + ' ' + r.detail).toLowerCase();
+          return keywords.some(k => keywordMatch(hay, k));
+        })
+      : all).slice(0, 300);
+    statusEl.textContent = `${programsFeedResults.length} matching programs (of ${all.length} total) — fetched ${new Date().toLocaleTimeString()}` + (errs.length ? ' · failed: ' + errs.join('; ') : '');
+    renderProgramsFeed();
+  } catch (err) {
+    statusEl.className = 'feed-status err';
+    statusEl.textContent = 'Fetch failed: ' + err.message + ' — check your internet connection.';
+  }
+}
+
+function renderProgramsFeed() {
+  const el = document.getElementById('list-programs-feed');
+  const trackedNames = new Set(data.programs.map(p => p.title.toLowerCase()));
+  el.innerHTML = programsFeedResults.length ? programsFeedResults.map((r, i) => {
+    const already = trackedNames.has(r.name.toLowerCase());
+    return `<div class="card">
+      <div class="info">
+        <div class="title">${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.name)}</a>` : esc(r.name)}</div>
+        <div class="meta">${r.detail ? esc(r.detail) + ' · ' : ''}<em>${esc(r.source)}</em></div>
+      </div>
+      <div class="actions">
+        ${already
+          ? '<span class="badge done">tracked ✓</span>'
+          : `<button class="btn small" onclick="addFromProgramsFeed(${i})">+ Track</button>`}
+      </div>
+    </div>`;
+  }).join('') : '<div class="empty">No matching programs. Try broader keywords, or clear the keyword box to see everything.</div>';
+}
+
+function addFromProgramsFeed(i) {
+  const r = programsFeedResults[i];
+  const kind = /apprentice/i.test(r.name) ? 'apprenticeship'
+    : /fellow/i.test(r.name) ? 'fellowship'
+    : /rotation/i.test(r.name) ? 'rotational program'
+    : /bootcamp/i.test(r.name) ? 'bootcamp' : 'other';
+  data.programs.unshift({
+    id: uid(), title: r.name, org: '', kind, url: r.url,
+    deadline: '', status: 'interested',
+    notes: (r.detail ? r.detail + ' · ' : '') + 'from ' + r.source,
+  });
+  save(); render(); renderProgramsFeed();
 }
 
 // ---------------- live posting check (runs on every page open) ----------------
