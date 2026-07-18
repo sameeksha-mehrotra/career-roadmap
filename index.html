@@ -319,15 +319,12 @@
 
   <!-- LIVE FEED -->
   <section class="tab" id="tab-feed">
-    <div class="src-row">Sources:
-      <code>SimplifyJobs/Summer2026-Internships</code>
-      <code>speedyapply/2026-AI-College-Jobs</code>
-    </div>
+    <div class="src-row" id="feed-sources"></div>
     <div class="toolbar">
       <input type="text" id="feed-keywords" placeholder="Filter keywords (comma-separated)" value="AI, ML, machine learning, product, solutions, deployment, forward deployed, applied, agent, LLM, TPM">
       <button class="btn" onclick="fetchFeed()">🔄 Refresh from internet</button>
     </div>
-    <div class="feed-status" id="feed-status">Click "Refresh from internet" to pull the latest openings from GitHub internship lists, filtered to your keywords.</div>
+    <div class="feed-status" id="feed-status">Click "Refresh from internet" to pull the latest openings from the community GitHub lists (filtered to your keywords) plus tracker companies' own job boards (always shown).</div>
     <div id="list-feed"></div>
   </section>
 
@@ -824,25 +821,99 @@ function importData(e) {
 }
 
 // ---------------- live feed ----------------
+// gh = community-maintained markdown lists; greenhouse/ashby = company job-board
+// APIs (CORS-open), pre-filtered to intern/new-grad/early-career titles.
 const FEED_SOURCES = [
-  {
-    name: 'SimplifyJobs Summer 2026',
-    url: 'https://raw.githubusercontent.com/SimplifyJobs/Summer2026-Internships/dev/README.md',
-    fallback: 'https://raw.githubusercontent.com/SimplifyJobs/Summer2026-Internships/main/README.md',
-  },
-  {
-    name: 'speedyapply 2026 AI College Jobs',
-    url: 'https://raw.githubusercontent.com/speedyapply/2026-AI-College-Jobs/main/README.md',
-  },
+  { type: 'gh', name: 'SimplifyJobs Internships', url: 'https://raw.githubusercontent.com/SimplifyJobs/Summer2026-Internships/dev/README.md', fallback: 'https://raw.githubusercontent.com/SimplifyJobs/Summer2026-Internships/main/README.md' },
+  { type: 'gh', name: 'speedyapply 2027 AI', url: 'https://raw.githubusercontent.com/speedyapply/2027-AI-College-Jobs/main/README.md' },
+  { type: 'gh', name: 'speedyapply 2026 AI', url: 'https://raw.githubusercontent.com/speedyapply/2026-AI-College-Jobs/main/README.md' },
+  { type: 'gh', name: 'speedyapply 2027 SWE', url: 'https://raw.githubusercontent.com/speedyapply/2027-SWE-College-Jobs/main/README.md' },
+  { type: 'gh', name: 'vanshb03 Internships', url: 'https://raw.githubusercontent.com/vanshb03/Summer2026-Internships/dev/README.md' },
+  { type: 'gh', name: 'jobright SWE', url: 'https://raw.githubusercontent.com/jobright-ai/2026-Software-Engineer-Internship/master/README.md' },
+  { type: 'gh', name: 'jobright PM', url: 'https://raw.githubusercontent.com/jobright-ai/2026-Product-Management-Internship/master/README.md' },
+  { type: 'gh', name: 'jobright Data', url: 'https://raw.githubusercontent.com/jobright-ai/2026-Data-Analysis-Internship/master/README.md' },
+  { type: 'greenhouse', name: 'Scale AI board', board: 'scaleai', company: 'Scale AI' },
+  { type: 'greenhouse', name: 'Databricks board', board: 'databricks', company: 'Databricks' },
+  { type: 'greenhouse', name: 'Anthropic board', board: 'anthropic', company: 'Anthropic' },
+  { type: 'greenhouse', name: 'C3 AI board', board: 'c3iot', company: 'C3 AI' },
+  { type: 'greenhouse', name: 'Glean board', board: 'gleanwork', company: 'Glean' },
+  { type: 'greenhouse', name: 'Cresta board', board: 'cresta', company: 'Cresta' },
+  { type: 'ashby', name: 'OpenAI board', board: 'openai', company: 'OpenAI' },
+  { type: 'ashby', name: 'Sierra board', board: 'sierra', company: 'Sierra' },
+  { type: 'ashby', name: 'Snowflake board', board: 'snowflake', company: 'Snowflake' },
+  { type: 'ashby', name: 'Decagon board', board: 'decagon', company: 'Decagon' },
+  { type: 'ashby', name: 'Harvey board', board: 'harvey', company: 'Harvey' },
+  { type: 'ashby', name: 'Writer board', board: 'writer', company: 'Writer' },
 ];
+
+const EARLY_CAREER_RE = /\b(intern|internship|co-?op|university|campus|new ?grad|early career|apprentice)\b/i;
 
 let feedResults = [];
 
-async function fetchOne(src) {
+async function fetchSource(src) {
+  if (src.type === 'greenhouse') {
+    const res = await fetch(`https://boards-api.greenhouse.io/v1/boards/${src.board}/jobs`);
+    if (!res.ok) throw new Error(src.name + ': HTTP ' + res.status);
+    const js = await res.json();
+    return (js.jobs || []).filter(j => EARLY_CAREER_RE.test(j.title))
+      .map(j => ({ company: src.company, role: j.title, location: (j.location && j.location.name) || '', url: j.absolute_url, source: src.name, board: true }));
+  }
+  if (src.type === 'ashby') {
+    const res = await fetch(`https://api.ashbyhq.com/posting-api/job-board/${src.board}`);
+    if (!res.ok) throw new Error(src.name + ': HTTP ' + res.status);
+    const js = await res.json();
+    return (js.jobs || []).filter(j => EARLY_CAREER_RE.test(j.title))
+      .map(j => ({ company: src.company, role: j.title, location: j.location || '', url: j.jobUrl || j.applyUrl || '', source: src.name, board: true }));
+  }
   let res = await fetch(src.url);
   if (!res.ok && src.fallback) res = await fetch(src.fallback);
   if (!res.ok) throw new Error(src.name + ': HTTP ' + res.status);
-  return { name: src.name, md: await res.text() };
+  const md = await res.text();
+  // repos use either markdown pipe tables or raw HTML tables (SimplifyJobs
+  // switched to the latter) — try pipes first, fall back to HTML
+  const rows = parseMarkdownTables(md, src.name);
+  return rows.length ? rows : parseHtmlTables(md, src.name);
+}
+
+function parseHtmlTables(html, sourceName) {
+  const rows = [];
+  let lastCompany = '';
+  const trRe = /<tr[^>]*>([\s\S]*?)<\/tr>/gi;
+  let m;
+  while ((m = trRe.exec(html))) {
+    const cells = [...m[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(c => c[1]);
+    if (cells.length < 3) continue;
+    let company = stripMd(cells[0]);
+    if (!company || company === '↳') company = lastCompany; else lastCompany = company;
+    const role = stripMd(cells[1]);
+    const location = stripMd(cells[2].replace(/<br\s*\/?>/gi, ', '));
+    let url = '';
+    for (let i = cells.length - 1; i >= 1; i--) {
+      const a = cells[i].match(/href="(https?:\/\/[^"]+)"/);
+      if (a) { url = a[1]; break; }
+    }
+    if (!role || !company) continue;
+    rows.push({ company, role, location, url, source: sourceName });
+  }
+  return rows;
+}
+
+// fetch every source, merge, drop closed listings and cross-source duplicates
+async function fetchAllRows() {
+  const results = await Promise.allSettled(FEED_SOURCES.map(fetchSource));
+  let all = []; const errs = [];
+  for (const r of results) {
+    if (r.status === 'fulfilled') all = all.concat(r.value);
+    else errs.push(r.reason.message);
+  }
+  const seen = new Set();
+  all = all.filter(r => {
+    if (!r.role || !r.company || /closed/i.test(r.role)) return false;
+    const key = (r.company + '|' + r.role).toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+  return { all, errs };
 }
 
 function parseMarkdownTables(md, sourceName) {
@@ -881,33 +952,23 @@ function stripMd(s) {
 async function fetchFeed() {
   const statusEl = document.getElementById('feed-status');
   statusEl.className = 'feed-status';
-  statusEl.innerHTML = '<span class="spinner"></span>Fetching latest listings from GitHub…';
+  statusEl.innerHTML = `<span class="spinner"></span>Fetching listings from ${FEED_SOURCES.length} sources…`;
   document.getElementById('list-feed').innerHTML = '';
   const keywords = document.getElementById('feed-keywords').value
     .split(',').map(k => k.trim().toLowerCase()).filter(Boolean);
   try {
-    const results = await Promise.allSettled(FEED_SOURCES.map(fetchOne));
-    let all = [];
-    const errs = [];
-    for (const r of results) {
-      if (r.status === 'fulfilled') all = all.concat(parseMarkdownTables(r.value.md, r.value.name));
-      else errs.push(r.reason.message);
-    }
-    feedResults = keywords.length
+    const { all, errs } = await fetchAllRows();
+    // keywords filter the big community lists; company-board rows (already
+    // intern-only, from tracker-relevant companies) always pass
+    feedResults = (keywords.length
       ? all.filter(row => {
+          if (row.board) return true;
           const hay = (row.company + ' ' + row.role).toLowerCase();
           return keywords.some(k => hay.includes(k));
         })
-      : all;
-    // de-dup and drop closed listings
-    const seen = new Set();
-    feedResults = feedResults.filter(r => {
-      if (/closed/i.test(r.role)) return false;
-      const key = (r.company + '|' + r.role).toLowerCase();
-      if (seen.has(key)) return false;
-      seen.add(key); return true;
-    }).slice(0, 300);
-    statusEl.textContent = `${feedResults.length} matching openings (of ${all.length} total) — fetched ${new Date().toLocaleTimeString()}` + (errs.length ? ' · errors: ' + errs.join('; ') : '');
+      : all).slice(0, 500);
+    const okSources = FEED_SOURCES.length - errs.length;
+    statusEl.textContent = `${feedResults.length} matching openings (of ${all.length} total from ${okSources} sources) — fetched ${new Date().toLocaleTimeString()}` + (errs.length ? ' · failed: ' + errs.join('; ') : '');
     renderFeed();
   } catch (err) {
     statusEl.className = 'feed-status err';
@@ -949,13 +1010,8 @@ function companyTokens(company) {
 async function checkLivePostings() {
   const el = document.getElementById('live-check-status');
   try {
-    const results = await Promise.allSettled(FEED_SOURCES.map(fetchOne));
-    let all = [];
-    for (const r of results) {
-      if (r.status === 'fulfilled') all = all.concat(parseMarkdownTables(r.value.md, r.value.name));
-    }
+    const { all } = await fetchAllRows();
     if (!all.length) throw new Error('no listings fetched');
-    all = all.filter(r => !/closed/i.test(r.role));
     liveMatches = {};
     let hits = 0;
     data.internships.forEach(it => {
@@ -1133,6 +1189,13 @@ function renderOps() {
 }
 
 // ---------------- init ----------------
+const ghSources = FEED_SOURCES.filter(s => s.type === 'gh');
+const boardSources = FEED_SOURCES.filter(s => s.type !== 'gh');
+document.getElementById('feed-sources').innerHTML =
+  `${FEED_SOURCES.length} sources — ${ghSources.length} GitHub lists: ` +
+  ghSources.map(s => `<code>${s.name}</code>`).join(' ') +
+  ` · ${boardSources.length} company boards (intern/new-grad roles only): ` +
+  boardSources.map(s => `<code>${s.company}</code>`).join(' ');
 render();
 checkLivePostings();
 </script>
