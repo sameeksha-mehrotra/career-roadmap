@@ -255,6 +255,13 @@
         <option value="">All statuses</option>
         <option>interested</option><option>applied</option><option>interview</option><option>offer</option><option>rejected</option>
       </select>
+      <select id="sort-jobs" onchange="render()">
+        <option value="">Sort: as added</option>
+        <option value="deadline-asc">Deadline (earliest first)</option>
+        <option value="deadline-desc">Deadline (latest first)</option>
+        <option value="nextdue-asc">Next action due (earliest first)</option>
+        <option value="applied-desc">Date applied (most recent first)</option>
+      </select>
       <button class="btn" onclick="openForm('jobs')">+ Add job</button>
     </div>
     <div id="list-jobs"></div>
@@ -267,6 +274,13 @@
       <select id="filter-programs" onchange="render()">
         <option value="">All statuses</option>
         <option>interested</option><option>applied</option><option>interview</option><option>offer</option><option>rejected</option>
+      </select>
+      <select id="sort-programs" onchange="render()">
+        <option value="">Sort: as added</option>
+        <option value="deadline-asc">Deadline (earliest first)</option>
+        <option value="deadline-desc">Deadline (latest first)</option>
+        <option value="nextdue-asc">Next action due (earliest first)</option>
+        <option value="applied-desc">Date applied (most recent first)</option>
       </select>
       <button class="btn" onclick="openForm('programs')">+ Add program</button>
     </div>
