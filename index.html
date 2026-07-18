@@ -235,6 +235,13 @@
         <option value="">All statuses</option>
         <option>interested</option><option>applied</option><option>interview</option><option>offer</option><option>rejected</option>
       </select>
+      <select id="sort-internships" onchange="render()">
+        <option value="">Sort: as added</option>
+        <option value="deadline-asc">Deadline (earliest first)</option>
+        <option value="deadline-desc">Deadline (latest first)</option>
+        <option value="nextdue-asc">Next action due (earliest first)</option>
+        <option value="applied-desc">Date applied (most recent first)</option>
+      </select>
       <button class="btn" onclick="openForm('internships')">+ Add internship</button>
     </div>
     <div id="list-internships"></div>
@@ -687,12 +694,28 @@ function cardHtml(section, it) {
   </div>`;
 }
 
+const SORTS = {
+  'deadline-asc': ['deadline', 1], 'deadline-desc': ['deadline', -1],
+  'nextdue-asc': ['nextdue', 1], 'applied-desc': ['applied', -1],
+};
+
 function filtered(section) {
   let items = data[section];
   const q = document.getElementById('search-' + section)?.value.toLowerCase() || '';
   const st = document.getElementById('filter-' + section)?.value || '';
   if (q) items = items.filter(it => JSON.stringify(it).toLowerCase().includes(q));
   if (st) items = items.filter(it => it.status === st);
+  const sort = SORTS[document.getElementById('sort-' + section)?.value || ''];
+  if (sort) {
+    const [k, dir] = sort;
+    // ISO dates (YYYY-MM-DD) sort correctly as strings; undated items go last
+    items = items.slice().sort((a, b) => {
+      if (!a[k] && !b[k]) return 0;
+      if (!a[k]) return 1;
+      if (!b[k]) return -1;
+      return dir * a[k].localeCompare(b[k]);
+    });
+  }
   return items;
 }
 
