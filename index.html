@@ -295,6 +295,12 @@
         <option value="">All statuses</option>
         <option>todo</option><option>reached-out</option><option>scheduled</option><option>done</option>
       </select>
+      <select id="sort-coffee" onchange="render()">
+        <option value="">Sort: as added</option>
+        <option value="date-asc">Chat date (earliest first)</option>
+        <option value="date-desc">Chat date (latest first)</option>
+        <option value="followup-asc">Follow-up due (earliest first)</option>
+      </select>
       <button class="btn" onclick="openForm('coffee')">+ Add person</button>
     </div>
     <div id="list-coffee"></div>
@@ -711,6 +717,7 @@ function cardHtml(section, it) {
 const SORTS = {
   'deadline-asc': ['deadline', 1], 'deadline-desc': ['deadline', -1],
   'nextdue-asc': ['nextdue', 1], 'applied-desc': ['applied', -1],
+  'date-asc': ['date', 1], 'date-desc': ['date', -1], 'followup-asc': ['followup', 1],
 };
 
 function filtered(section) {
