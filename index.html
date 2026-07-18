@@ -100,6 +100,8 @@
   .badge.t1 { background: rgba(124,108,255,.18); color: var(--accent); }
   .badge.t2 { background: rgba(99,179,237,.15); color: var(--blue); }
   .badge.t3 { background: rgba(154,161,181,.15); color: var(--muted); }
+  a.badge.live { background: rgba(72,187,120,.2); color: var(--green); text-decoration: none; border: 1px solid rgba(72,187,120,.4); }
+  a.badge.live:hover { background: rgba(72,187,120,.35); }
   /* daily ops */
   .ops-h { font-size: 15px; color: var(--accent2); margin: 22px 0 10px; display: flex; align-items: center; gap: 10px; }
   .ops-h .line { flex: 1; height: 1px; background: var(--border); }
@@ -244,6 +246,7 @@
       </select>
       <button class="btn" onclick="openForm('internships')">+ Add internship</button>
     </div>
+    <div class="feed-status" id="live-check-status">Checking GitHub internship lists for live postings…</div>
     <div id="list-internships"></div>
   </section>
 
@@ -697,9 +700,13 @@ function cardHtml(section, it) {
   const fu = it.followup ? deadlineHtml(it.followup) : '';
   const nextHtml = (it.next || it.nextdue)
     ? `<div class="meta next-action">→ ${esc(it.next || 'next action')}${it.nextdue ? ' ' + deadlineHtml(it.nextdue) : ''}</div>` : '';
+  const live = section === 'internships' ? liveMatches[it.id] : null;
+  const liveBadge = live
+    ? ` <a class="badge live" target="_blank" rel="noopener" href="${esc(live[0].url || it.url)}" title="${esc(live.slice(0, 6).map(r => r.role).join('  |  '))}">posting live ✓${live.length > 1 ? ' ×' + live.length : ''}</a>`
+    : '';
   return `<div class="card">
     <div class="info">
-      <div class="title">${it.status ? `<span class="badge ${esc(it.status)}">${esc(it.status)}</span> ` : ''}${titleHtml}</div>
+      <div class="title">${it.status ? `<span class="badge ${esc(it.status)}">${esc(it.status)}</span> ` : ''}${titleHtml}${liveBadge}</div>
       ${metaBits.length ? `<div class="meta">${metaBits.join(' · ')}</div>` : ''}
       ${dl ? `<div class="meta">${dl}</div>` : ''}
       ${fu ? `<div class="meta">follow-up: ${fu}</div>` : ''}
@@ -930,6 +937,47 @@ function renderFeed() {
   }).join('') : '<div class="empty">No matching openings. Try broader keywords or click Refresh.</div>';
 }
 
+// ---------------- live posting check (runs on every page open) ----------------
+let liveMatches = {}; // internship id -> matching feed rows
+
+function normName(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+// 'Amazon (AWS)' -> ['Amazon','AWS']; 'Sierra / Decagon / Cresta' -> the three names
+function companyTokens(company) {
+  return String(company || '').split(/[\/(),]/).map(t => t.trim()).filter(Boolean);
+}
+
+async function checkLivePostings() {
+  const el = document.getElementById('live-check-status');
+  try {
+    const results = await Promise.allSettled(FEED_SOURCES.map(fetchOne));
+    let all = [];
+    for (const r of results) {
+      if (r.status === 'fulfilled') all = all.concat(parseMarkdownTables(r.value.md, r.value.name));
+    }
+    if (!all.length) throw new Error('no listings fetched');
+    all = all.filter(r => !/closed/i.test(r.role));
+    liveMatches = {};
+    let hits = 0;
+    data.internships.forEach(it => {
+      if (['offer', 'rejected'].includes(it.status)) return;
+      const toks = companyTokens(it.company).map(normName).filter(Boolean);
+      const rows = all.filter(row => {
+        const c = normName(row.company);
+        // exact normalized match, or prefix match for names >= 4 chars ('deshaw' vs 'deshawgroup');
+        // short names like 'EY' must match exactly to avoid false positives
+        return toks.some(t => c === t || (t.length >= 4 && c.length >= 4 && (c.startsWith(t) || t.startsWith(c))));
+      });
+      if (rows.length) { liveMatches[it.id] = rows; hits++; }
+    });
+    if (el) el.textContent = hits
+      ? `✅ ${hits} tracker compan${hits === 1 ? 'y has' : 'ies have'} live postings on the GitHub lists — green badges below link straight to them. Checked ${new Date().toLocaleTimeString()}.`
+      : `No tracker-company postings on the GitHub lists yet. Checked ${new Date().toLocaleTimeString()} — this runs automatically every time you open the dashboard.`;
+    render();
+  } catch (err) {
+    if (el) el.textContent = 'Live posting check failed (' + err.message + ') — the 📡 Live Feed tab still works manually.';
+  }
+}
+
 function addFromFeed(i) {
   const r = feedResults[i];
   data.internships.unshift({
@@ -1086,6 +1134,7 @@ function renderOps() {
 
 // ---------------- init ----------------
 render();
+checkLivePostings();
 </script>
 </body>
 </html>
