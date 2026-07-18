@@ -268,6 +268,18 @@
       <button class="btn" onclick="openForm('jobs')">+ Add job</button>
     </div>
     <div id="list-jobs"></div>
+
+    <div class="ops-h" style="margin-top:28px"><h3>📡 Part-time / off-season live feed</h3><div class="line"></div></div>
+    <div class="src-row">Sources:
+      <code>SimplifyJobs Off-Season list</code>
+      <code>HN "Who is hiring?" (latest month)</code>
+    </div>
+    <div class="toolbar">
+      <input type="text" id="jobs-feed-keywords" placeholder="Filter keywords (comma-separated)" value="AI, ML, LLM, agent, founding, applied, product">
+      <button class="btn" onclick="fetchJobsFeed()">🔄 Check part-time sources</button>
+    </div>
+    <div class="feed-status" id="jobs-feed-status">Off-season (fall/spring) internships from SimplifyJobs, plus part-time / intern / contract posts from the newest Hacker News "Who is hiring?" thread — the monthly HN scan from your plan, automated.</div>
+    <div id="list-jobs-feed"></div>
   </section>
 
   <!-- PROGRAMS -->
@@ -848,6 +860,12 @@ const FEED_SOURCES = [
 
 const EARLY_CAREER_RE = /\b(intern|internship|co-?op|university|campus|new ?grad|early career|apprentice)\b/i;
 
+// short keywords ("AI", "ML") match whole words only, so "AI" doesn't hit "Chain"
+function keywordMatch(hay, k) {
+  if (k.length > 3) return hay.includes(k);
+  return new RegExp('\\b' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(hay);
+}
+
 let feedResults = [];
 
 async function fetchSource(src) {
@@ -964,7 +982,7 @@ async function fetchFeed() {
       ? all.filter(row => {
           if (row.board) return true;
           const hay = (row.company + ' ' + row.role).toLowerCase();
-          return keywords.some(k => hay.includes(k));
+          return keywords.some(k => keywordMatch(hay, k));
         })
       : all).slice(0, 500);
     const okSources = FEED_SOURCES.length - errs.length;
@@ -996,6 +1014,113 @@ function renderFeed() {
       </div>
     </div>`;
   }).join('') : '<div class="empty">No matching openings. Try broader keywords or click Refresh.</div>';
+}
+
+// ---------------- part-time / off-season feed (jobs tab) ----------------
+const JOBS_FEED_GH = { type: 'gh', name: 'SimplifyJobs Off-Season', url: 'https://raw.githubusercontent.com/SimplifyJobs/Summer2026-Internships/dev/README-Off-Season.md' };
+const PART_TIME_RE = /part[- ]?time|\bintern(ship)?\b|\bcontract\b/i;
+
+let jobsFeedResults = [];
+
+function stripHtmlText(s) {
+  return String(s || '')
+    .replace(/<p>/gi, '\n').replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/&#x2F;/g, '/')
+    .trim();
+}
+
+async function fetchHNJobs() {
+  const search = await fetch('https://hn.algolia.com/api/v1/search_by_date?tags=story,author_whoishiring&hitsPerPage=6');
+  if (!search.ok) throw new Error('HN search: HTTP ' + search.status);
+  const hit = (await search.json()).hits.find(h => /who is hiring/i.test(h.title));
+  if (!hit) throw new Error('HN: no current Who is Hiring thread');
+  const res = await fetch('https://hn.algolia.com/api/v1/items/' + hit.objectID);
+  if (!res.ok) throw new Error('HN thread: HTTP ' + res.status);
+  const item = await res.json();
+  const month = (hit.title.match(/\(([^)]+)\)/) || [])[1] || 'current';
+  return (item.children || [])
+    .filter(c => c.text && PART_TIME_RE.test(c.text))
+    .map(c => {
+      const firstLine = stripHtmlText(c.text).split('\n')[0];
+      const parts = firstLine.split('|').map(x => x.trim()).filter(Boolean);
+      return {
+        company: (parts[0] || c.author || '?').slice(0, 40),
+        role: (parts.length > 1 ? parts.slice(1, 4).join(' · ') : firstLine).slice(0, 110),
+        location: '',
+        url: 'https://news.ycombinator.com/item?id=' + c.id,
+        source: 'HN Who is hiring (' + month + ')',
+        hay: firstLine, // keyword match on the header line, not the whole post
+      };
+    });
+}
+
+async function fetchJobsFeed() {
+  const statusEl = document.getElementById('jobs-feed-status');
+  statusEl.className = 'feed-status';
+  statusEl.innerHTML = '<span class="spinner"></span>Checking the off-season list and the latest HN Who is Hiring thread…';
+  document.getElementById('list-jobs-feed').innerHTML = '';
+  const keywords = document.getElementById('jobs-feed-keywords').value
+    .split(',').map(k => k.trim().toLowerCase()).filter(Boolean);
+  try {
+    // HN first: it's small (dozens of rows) and must not be pushed past the cap
+    // by the ~2500-row off-season list
+    const results = await Promise.allSettled([fetchHNJobs(), fetchSource(JOBS_FEED_GH)]);
+    let all = []; const errs = [];
+    for (const r of results) {
+      if (r.status === 'fulfilled') all = all.concat(r.value);
+      else errs.push(r.reason.message);
+    }
+    if (!all.length) throw new Error(errs.join('; ') || 'no listings fetched');
+    const seen = new Set();
+    all = all.filter(r => {
+      if (!r.role || !r.company || /closed/i.test(r.role)) return false;
+      const key = (r.company + '|' + r.role).toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key); return true;
+    });
+    jobsFeedResults = (keywords.length
+      ? all.filter(row => {
+          const hay = (row.hay || (row.company + ' ' + row.role)).toLowerCase();
+          return keywords.some(k => keywordMatch(hay, k));
+        })
+      : all).slice(0, 300);
+    statusEl.textContent = `${jobsFeedResults.length} matching roles (of ${all.length} total) — fetched ${new Date().toLocaleTimeString()}` + (errs.length ? ' · failed: ' + errs.join('; ') : '');
+    renderJobsFeed();
+  } catch (err) {
+    statusEl.className = 'feed-status err';
+    statusEl.textContent = 'Fetch failed: ' + err.message + ' — check your internet connection.';
+  }
+}
+
+function renderJobsFeed() {
+  const el = document.getElementById('list-jobs-feed');
+  const trackedKeys = new Set(data.jobs.map(trackedKey));
+  el.innerHTML = jobsFeedResults.length ? jobsFeedResults.map((r, i) => {
+    const key = (r.company + '|' + r.role).toLowerCase();
+    const already = trackedKeys.has(key);
+    return `<div class="card">
+      <div class="info">
+        <div class="title">${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.role)}</a>` : esc(r.role)}</div>
+        <div class="meta">${esc(r.company)}${r.location ? ' · ' + esc(r.location) : ''} · <em>${esc(r.source)}</em></div>
+      </div>
+      <div class="actions">
+        ${already
+          ? '<span class="badge done">tracked ✓</span>'
+          : `<button class="btn small" onclick="addFromJobsFeed(${i})">+ Track</button>`}
+      </div>
+    </div>`;
+  }).join('') : '<div class="empty">No matching roles. Try broader keywords, or clear the keyword box to see everything.</div>';
+}
+
+function addFromJobsFeed(i) {
+  const r = jobsFeedResults[i];
+  data.jobs.unshift({
+    id: uid(), title: r.role, company: r.company, kind: 'part-time', url: r.url,
+    deadline: '', status: 'interested',
+    notes: (r.location ? r.location + ' · ' : '') + 'from ' + r.source,
+  });
+  save(); render(); renderJobsFeed();
 }
 
 // ---------------- live posting check (runs on every page open) ----------------
