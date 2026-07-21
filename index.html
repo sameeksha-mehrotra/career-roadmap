@@ -192,7 +192,7 @@
 
 <header>
   <h1>Career <span>Command Center</span></h1>
-  <div class="sub">AI-adjacent product roles &mdash; roadmap, opportunities, and networking tracker</div>
+  <div class="sub">Dual-track: AI Engineer / Forward-Deployed &amp; AI Product Management &mdash; roadmap, opportunities, and networking tracker</div>
   <div class="stats-row" id="statsRow"></div>
   <nav id="nav">
     <button data-tab="roadmap" class="active">🗺️ Roadmap</button>
@@ -478,8 +478,57 @@ const DEFAULT_DATA = {
     { id: uid(), title: 'Herb Kelleher Entrepreneurship Center', url: '', notes: 'UT campus. Startup career events + founder network built for exactly this ask — check the event calendar.' },
     { id: uid(), title: 'X (Twitter): Austin + AI founders', url: '', notes: 'Passive daily. Founders post "need a part-time eng" before any job board sees it. Search "part-time" "founding" "intern" + AI.' },
   ],
-  ops: { checks: {}, week: {} },
+  ops: { checks: {}, week: {}, pmMigrated: true, pmTrackAdded: true },
 };
+
+// AI Product Management track — co-primary alongside the AI Engineer/FDE track.
+// Returned fresh each call so every id is unique. Items are tagged "AI PM" in
+// their notes; the engineering items stay as they are, so both tracks read
+// clearly side by side.
+function pmTrackItems() {
+  return {
+    roadmap: [
+      { title: 'AI PM — reframe resume Variant B as an AI Product resume', phase: PHASES[0], due: '2026-08-31', status: 'not-started', notes: 'Lead with the PRD + AI product instincts; trim deep engineering to a credibility line. Kept alongside Variant A (SE/FDE) so you can chase both tracks without rewriting each time.' },
+      { title: 'AI PM — start an AI-product PRD as your PM flagship artifact', phase: PHASES[0], due: '2026-09-30', status: 'not-started', notes: 'Spec one real AI feature end to end: problem, user, success metrics, model/UX tradeoffs, evals, rollout, risks. This is to the PM loop what the RAG app is to the SE loop — reuse your agentic project as the underlying product.' },
+      { title: 'AI PM — product-sense & design cases, 1–2/week', phase: PHASES[1], due: '', status: 'not-started', notes: '"Design an AI feature for product X" / "improve Y with LLMs." Clarify user + goal, brainstorm, prioritize, define metrics, discuss tradeoffs. Exponent and Lenny’s have AI-PM case banks.' },
+      { title: 'AI PM — estimation & market-sizing drills, weekly', phase: PHASES[1], due: '', status: 'not-started', notes: 'Guesstimates, market sizing, back-of-envelope metrics. A separate muscle from LeetCode — interviewers test structured quantitative reasoning under ambiguity.' },
+      { title: 'AI PM — learn prioritization & metrics frameworks', phase: PHASES[1], due: '', status: 'not-started', notes: 'RICE, North Star metric, AARRR funnels, guardrail metrics, A/B basics. Be able to pick a North Star for an AI product and defend it.' },
+      { title: 'AI PM — study PM interviews + write PM STAR stories', phase: PHASES[1], due: '2026-09-30', status: 'not-started', notes: 'Exponent + "Decode and Conquer" for frameworks (CIRCLES/AARM). Write 4–6 PM-flavored behavioral stories (product decision, stakeholder conflict, data-driven call) — your Citi PRD and 100+ eng/exec story are anchors.' },
+    ],
+    internships: [
+      { tier: 'T1', title: 'AI Product Manager Intern (APM feeder)', company: 'Google', url: 'https://www.google.com/about/careers/applications/students/', deadline: '', status: 'interested', notes: 'AI PM · window Aug–Oct · Same Jasleen/Somya/Harini network — ask for PM intros too. Google APM is the flagship product track; intern converts toward it. Target Cloud AI / Gemini product teams.' },
+      { tier: 'T1', title: 'Product Manager Intern (→ RPM)', company: 'Meta', url: 'https://www.metacareers.com/careers/', deadline: '', status: 'interested', notes: 'AI PM · window Aug–Oct · LinkedIn outreach to a PM/RPM. Feeds the Rotational Product Manager program; target GenAI / Meta AI product orgs.' },
+      { tier: 'T1', title: 'Product Manager Intern (APM feeder)', company: 'LinkedIn', url: 'https://careers.linkedin.com/students', deadline: '', status: 'interested', notes: 'AI PM · window Aug–Oct · Strong APM pipeline; AI-in-product work (recruiter/search/feed). UT + BTT network.' },
+      { tier: 'T1', title: 'AI Product Manager (watch list)', company: 'Anthropic / OpenAI (PM)', url: 'https://www.anthropic.com/careers', deadline: '', status: 'interested', notes: 'AI PM · senior-year target. Frontier-lab product roles rarely take interns — the PM-track analogue of the FDE watch entry. Build the PRD + product profile now, revisit fall 2027.' },
+      { tier: 'T2', title: 'Product Manager Intern (Futureforce)', company: 'Salesforce (PM)', url: 'https://www.salesforce.com/company/careers/university-recruiting/', deadline: '', status: 'interested', notes: 'AI PM · Agentforce product teams — the PM side of the SWE Salesforce entry you already track.' },
+      { tier: 'T2', title: 'APM / Product Manager Intern', company: 'Uber', url: 'https://www.uber.com/us/en/careers/teams/university/', deadline: '', status: 'interested', notes: 'AI PM · window Aug–Oct · Well-known APM program; heavy ML/marketplace product work.' },
+    ],
+    programs: [
+      { title: 'Google APM Program', org: 'Google', kind: 'rotational program', url: 'https://www.google.com/about/careers/applications/', deadline: '', status: 'interested', notes: 'AI PM · flagship new-grad APM rotation — the product-side analogue of an FDE org. Senior-year target; intern conversion is the main door in.' },
+      { title: 'Meta RPM (Rotational Product Manager)', org: 'Meta', kind: 'rotational program', url: 'https://www.metacareers.com/careers/', deadline: '', status: 'interested', notes: 'AI PM · new-grad rotational PM program; GenAI product orgs. Feeds from the PM intern role.' },
+      { title: 'Uber APM Program', org: 'Uber', kind: 'rotational program', url: 'https://www.uber.com/us/en/careers/teams/university/', deadline: '', status: 'interested', notes: 'AI PM · structured new-grad APM rotation; ML-heavy product surfaces.' },
+      { title: 'LinkedIn APM Program', org: 'LinkedIn', kind: 'rotational program', url: 'https://careers.linkedin.com/students', deadline: '', status: 'interested', notes: 'AI PM · two-year APM rotation with an AI-in-product focus.' },
+      { title: 'Atlassian Associate PM (APM)', org: 'Atlassian', kind: 'rotational program', url: 'https://www.atlassian.com/company/careers/students', deadline: '', status: 'interested', notes: 'AI PM · APM program on Atlassian Intelligence / Rovo. Pairs with your JIRA power-user story.' },
+    ],
+    coffee: [
+      { title: 'AI PMs / APMs (3–4 people)', role: 'Google, Meta, Microsoft AI product teams', contact: '', date: '', status: 'todo', notes: 'AI PM track · Ask how they broke into AI PM, what a strong intern PRD looks like, and how AI PM differs from classic PM. Overlaps the Jasleen/Somya/Harini network — ask them for PM intros too.' },
+      { title: 'PM at an AI-native company', role: 'OpenAI / Anthropic / Scale / Glean product', contact: '', date: '', status: 'todo', notes: 'AI PM track · What makes a strong AI PM at a frontier/applied-AI company; how they handle evals, model tradeoffs, and shipping non-deterministic products.' },
+      { title: 'Someone who moved eng/TPM → PM', role: 'SWE or TPM → Product transition', contact: '', date: '', status: 'todo', notes: 'AI PM track · Your exact potential path. Ask what convinced hiring managers they were "product," not just technical, and which artifact sealed it.' },
+    ],
+    resources: [
+      { title: 'Exponent — PM interview prep', url: 'https://www.tryexponent.com', notes: 'AI PM track · Product-sense, estimation, and AI-PM case banks with sample answers.' },
+      { title: "Lenny’s Newsletter", url: 'https://www.lennysnewsletter.com', notes: 'AI PM track · The default PM resource; strong AI-PM coverage (evals, AI product strategy, hiring bars).' },
+      { title: 'Decode and Conquer (Lewis Lin)', url: '', notes: 'AI PM track · The classic PM-interview framework book (CIRCLES, AARM). Borrow from the library, don’t buy.' },
+      { title: 'PM frameworks: RICE · North Star · AARRR', url: '', notes: 'AI PM track · Prioritization (RICE), one guiding metric (North Star), funnel (AARRR). Be able to apply each to an AI product on the spot.' },
+    ],
+  };
+}
+// seed the PM track into the defaults for fresh loads; existing saves get it
+// via the guarded migration below
+(function seedPmTrack() {
+  const pm = pmTrackItems();
+  Object.keys(pm).forEach(sec => pm[sec].forEach(it => DEFAULT_DATA[sec].push({ id: uid(), ...it })));
+})();
 
 // Careers-page links for tracker companies (2027 postings mostly open Aug–Oct;
 // these are the stable early-career pages to check during morning triage).
@@ -535,6 +584,15 @@ if (!data.ops.pmMigrated) {
     }
   });
   data.ops.pmMigrated = true;
+  save();
+}
+// one-time: add the AI Product Management track to existing saved data
+if (!data.ops.pmTrackAdded) {
+  const pm = pmTrackItems();
+  Object.keys(pm).forEach(sec => {
+    if (Array.isArray(data[sec])) pm[sec].forEach(it => data[sec].push({ id: uid(), ...it }));
+  });
+  data.ops.pmTrackAdded = true;
   save();
 }
 
