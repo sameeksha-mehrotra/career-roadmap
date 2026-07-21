@@ -347,7 +347,7 @@
   <section class="tab" id="tab-feed">
     <div class="src-row" id="feed-sources"></div>
     <div class="toolbar">
-      <input type="text" id="feed-keywords" placeholder="Filter keywords (comma-separated)" value="AI, ML, machine learning, product, solutions, deployment, forward deployed, applied, agent, LLM, TPM">
+      <input type="text" id="feed-keywords" placeholder="Filter keywords (comma-separated)" value="AI, ML, machine learning, product manager, product management, AI PM, solutions, deployment, forward deployed, applied, agent, LLM">
       <button class="btn" onclick="fetchFeed()">🔄 Refresh from internet</button>
     </div>
     <div class="feed-status" id="feed-status">Click "Refresh from internet" to pull the latest openings from the community GitHub lists (filtered to your keywords) plus tracker companies' own job boards (always shown).</div>
@@ -425,13 +425,13 @@ const DEFAULT_DATA = {
     { id: uid(), tier: 'T1', title: 'Deployment / Applied AI Intern (often unposted)', company: 'Sierra / Decagon / Cresta', url: '', deadline: '', status: 'interested', notes: 'SE/FDE · rolling, often hidden · Cold email founders/eng leads with RAG project + one-paragraph pitch. Agent companies; deployment roles under many titles; portfolio-driven hiring.' },
     { id: uid(), tier: 'T1', title: 'Applied AI / Solutions Intern', company: 'Glean / Hebbia / Harvey / Writer', url: '', deadline: '', status: 'interested', notes: 'SE/FDE · rolling, often hidden · Same cold-email playbook — 10 companies, expect 1–2 replies. Enterprise AI apps: exactly the RAG/agent stack you built.' },
     { id: uid(), tier: 'T1', title: 'Applied AI / FDE new-grad (watch list)', company: 'Anthropic / OpenAI', url: '', deadline: '', status: 'interested', notes: 'FDE · senior-year target. Build the applied profile now; revisit fall 2027. Frontier-lab FDE orgs are post-sales delivery — realistic at graduation, not junior year.' },
-    { id: uid(), tier: 'T2', title: 'TPM / PM Intern', company: 'Microsoft', url: '', deadline: '', status: 'interested', notes: 'TPM · window Aug–Oct · LinkedIn outreach to a PM; Explore alumni. Structured PM intern program; your PRD is the work sample.' },
-    { id: uid(), tier: 'T2', title: 'TDP / Product Intern', company: 'Capital One', url: '', deadline: '', status: 'interested', notes: 'TPM · window Aug–Sep · UT has a strong Capital One pipeline; career fair. Tech + banking background matches perfectly.' },
-    { id: uid(), tier: 'T2', title: 'TPM Intern', company: 'Tesla', url: '', deadline: '', status: 'interested', notes: 'TPM · rolling · Reapply with the updated resume — materials already tailored last cycle.' },
-    { id: uid(), tier: 'T2', title: 'TPM / PM Intern', company: 'Atlassian', url: '', deadline: '', status: 'interested', notes: 'TPM · window Sep–Nov · LinkedIn outreach. The JIRA power-user story writes itself.' },
-    { id: uid(), tier: 'T2', title: 'PM Intern', company: 'Adobe', url: '', deadline: '', status: 'interested', notes: 'TPM · window Aug–Oct · Structured program at a product-led company.' },
+    { id: uid(), tier: 'T2', title: 'AI Product Manager Intern', company: 'Microsoft', url: '', deadline: '', status: 'interested', notes: 'AI PM · window Aug–Oct · LinkedIn outreach to a PM; Explore alumni. Target Copilot / AI product orgs; your PRD is the work sample.' },
+    { id: uid(), tier: 'T2', title: 'AI Product Management Intern', company: 'Capital One', url: '', deadline: '', status: 'interested', notes: 'AI PM · window Aug–Sep · UT has a strong Capital One pipeline; career fair. Aim for AI/ML product teams (Eno assistant, fraud, personalization) — tech + banking background fits.' },
+    { id: uid(), tier: 'T2', title: 'AI Product Manager Intern', company: 'Tesla', url: '', deadline: '', status: 'interested', notes: 'AI PM · rolling · Reapply with the updated resume. Target Autopilot / AI product orgs — materials already tailored last cycle.' },
+    { id: uid(), tier: 'T2', title: 'AI Product Manager Intern', company: 'Atlassian', url: '', deadline: '', status: 'interested', notes: 'AI PM · window Sep–Nov · LinkedIn outreach. Atlassian Intelligence / Rovo AI product work; the JIRA power-user story writes itself.' },
+    { id: uid(), tier: 'T2', title: 'AI Product Manager Intern', company: 'Adobe', url: '', deadline: '', status: 'interested', notes: 'AI PM · window Aug–Oct · Firefly / Sensei generative-AI product teams at a product-led company.' },
     { id: uid(), tier: 'T2', title: 'SWE / OCI GenAI Intern', company: 'Oracle', url: '', deadline: '', status: 'interested', notes: 'Austin HQ, OCI GenAI teams, realistic odds.' },
-    { id: uid(), tier: 'T2', title: 'SWE / PM Intern', company: 'Intuit', url: '', deadline: '', status: 'interested', notes: 'AI-forward, high intern conversion.' },
+    { id: uid(), tier: 'T2', title: 'AI Product Manager Intern', company: 'Intuit', url: '', deadline: '', status: 'interested', notes: 'AI PM · AI-forward (Intuit Assist / GenOS), high intern conversion. Also hires SWE interns if you want that track.' },
     { id: uid(), tier: 'T2', title: 'Systems / SWE / Strategy tracks', company: 'D.E. Shaw', url: '', deadline: '', status: 'applied', notes: 'Five tracks already in motion — follow up on existing applications.' },
     { id: uid(), tier: 'T3', title: 'Data Engineering Consultant Intern (GPS)', company: 'Deloitte', url: '', deadline: '', status: 'interested', notes: 'Consulting · window Aug–Oct · Existing GPS research; UT recruiting events. Bridge option only — keep warm.' },
     { id: uid(), tier: 'T3', title: 'Technology Consulting Intern', company: 'EY', url: '', deadline: '', status: 'interested', notes: 'Consulting · window Aug–Oct · Danielle Wilcher (existing recruiter contact). Expedition EY relationship already built.' },
@@ -511,9 +511,32 @@ const COMPANY_URLS = {
   'Citi': 'https://jobs.citi.com/students-and-graduates',
 };
 
+// Retarget the Tier-2 TPM/PM entries to AI Product Management. Runs once
+// against saved data, matching the old seed title+notes so any entry you've
+// edited (or already renamed) is left untouched.
+const PM_MIGRATION = {
+  'Microsoft': { from: { title: 'TPM / PM Intern', notes: 'TPM · window Aug–Oct · LinkedIn outreach to a PM; Explore alumni. Structured PM intern program; your PRD is the work sample.' }, to: { title: 'AI Product Manager Intern', notes: 'AI PM · window Aug–Oct · LinkedIn outreach to a PM; Explore alumni. Target Copilot / AI product orgs; your PRD is the work sample.' } },
+  'Capital One': { from: { title: 'TDP / Product Intern', notes: 'TPM · window Aug–Sep · UT has a strong Capital One pipeline; career fair. Tech + banking background matches perfectly.' }, to: { title: 'AI Product Management Intern', notes: 'AI PM · window Aug–Sep · UT has a strong Capital One pipeline; career fair. Aim for AI/ML product teams (Eno assistant, fraud, personalization) — tech + banking background fits.' } },
+  'Tesla': { from: { title: 'TPM Intern', notes: 'TPM · rolling · Reapply with the updated resume — materials already tailored last cycle.' }, to: { title: 'AI Product Manager Intern', notes: 'AI PM · rolling · Reapply with the updated resume. Target Autopilot / AI product orgs — materials already tailored last cycle.' } },
+  'Atlassian': { from: { title: 'TPM / PM Intern', notes: 'TPM · window Sep–Nov · LinkedIn outreach. The JIRA power-user story writes itself.' }, to: { title: 'AI Product Manager Intern', notes: 'AI PM · window Sep–Nov · LinkedIn outreach. Atlassian Intelligence / Rovo AI product work; the JIRA power-user story writes itself.' } },
+  'Adobe': { from: { title: 'PM Intern', notes: 'TPM · window Aug–Oct · Structured program at a product-led company.' }, to: { title: 'AI Product Manager Intern', notes: 'AI PM · window Aug–Oct · Firefly / Sensei generative-AI product teams at a product-led company.' } },
+  'Intuit': { from: { title: 'SWE / PM Intern', notes: 'AI-forward, high intern conversion.' }, to: { title: 'AI Product Manager Intern', notes: 'AI PM · AI-forward (Intuit Assist / GenOS), high intern conversion. Also hires SWE interns if you want that track.' } },
+};
+
 let data = load();
 // fill in careers links on any tracker company whose link is still empty (idempotent)
 data.internships.forEach(it => { if (!it.url && COMPANY_URLS[it.company]) it.url = COMPANY_URLS[it.company]; });
+// one-time TPM → AI Product Management retarget for existing saved data
+if (!data.ops.pmMigrated) {
+  data.internships.forEach(it => {
+    const m = PM_MIGRATION[it.company];
+    if (m && it.title === m.from.title && it.notes === m.from.notes) {
+      it.title = m.to.title; it.notes = m.to.notes;
+    }
+  });
+  data.ops.pmMigrated = true;
+  save();
+}
 
 function uid() { return Math.random().toString(36).slice(2, 10); }
 
