@@ -246,7 +246,7 @@
       </select>
       <button class="btn" onclick="openForm('internships')">+ Add internship</button>
     </div>
-    <div class="feed-status" id="live-check-status">Checking GitHub internship lists for live postings…</div>
+    <div class="feed-status" id="live-check-status">Checking sources for live Summer 2027 postings…</div>
     <div id="list-internships"></div>
   </section>
 
@@ -806,7 +806,7 @@ function cardHtml(section, it) {
     ? `<div class="meta next-action">→ ${esc(it.next || 'next action')}${it.nextdue ? ' ' + deadlineHtml(it.nextdue) : ''}</div>` : '';
   const live = section === 'internships' ? liveMatches[it.id] : null;
   const liveBadge = live
-    ? ` <a class="badge live" target="_blank" rel="noopener" href="${esc(live[0].url || it.url)}" title="${esc(live.slice(0, 6).map(r => r.role).join('  |  '))}">posting live ✓${live.length > 1 ? ' ×' + live.length : ''}</a>`
+    ? ` <a class="badge live" target="_blank" rel="noopener" href="${esc(live[0].url || it.url)}" title="${esc(live.slice(0, 6).map(r => r.role).join('  |  '))}">2027 posting ✓${live.length > 1 ? ' ×' + live.length : ''}</a>`
     : '';
   return `<div class="card">
     <div class="info">
@@ -961,22 +961,45 @@ function keywordMatch(hay, k) {
   return new RegExp('\\b' + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i').test(hay);
 }
 
+// Which recruiting cycle a source implies when a row gives no explicit term:
+// 2027 lists → 2027, year-named 2026/2025 lists → those years, company boards
+// → current (a live posting in mid-2026 is almost always Summer 2027).
+function sourceCycle(src) {
+  const tag = (src.name + ' ' + (src.url || '')).toLowerCase();
+  if (/2027/.test(tag)) return '2027';
+  if (src.type === 'greenhouse' || src.type === 'ashby') return 'current';
+  if (/20(2[0-6]|1\d)/.test(tag)) return '2026';
+  return 'current';
+}
+
+// Keep Summer-2027 (and undated current) internships; drop rows whose text
+// names an older term (Fall 2026, Summer 2026, etc.) or that come from a list
+// implied to be an earlier cycle.
+function isSummer2027(r) {
+  const t = (r.company + ' ' + r.role).toLowerCase();
+  if (/2027/.test(t)) return true;                 // explicitly 2027
+  if (/20(2[0-6]|1\d)/.test(t)) return false;       // explicitly 2010–2026
+  return r.cycle !== '2026';                         // undated: trust the source
+}
+
 let feedResults = [];
 
 async function fetchSource(src) {
+  const cyc = sourceCycle(src);
+  const tag = rows => { rows.forEach(r => { if (!r.cycle) r.cycle = cyc; }); return rows; };
   if (src.type === 'greenhouse') {
     const res = await fetch(`https://boards-api.greenhouse.io/v1/boards/${src.board}/jobs`);
     if (!res.ok) throw new Error(src.name + ': HTTP ' + res.status);
     const js = await res.json();
-    return (js.jobs || []).filter(j => EARLY_CAREER_RE.test(j.title))
-      .map(j => ({ company: src.company, role: j.title, location: (j.location && j.location.name) || '', url: j.absolute_url, source: src.name, board: true }));
+    return tag((js.jobs || []).filter(j => EARLY_CAREER_RE.test(j.title))
+      .map(j => ({ company: src.company, role: j.title, location: (j.location && j.location.name) || '', url: j.absolute_url, source: src.name, board: true })));
   }
   if (src.type === 'ashby') {
     const res = await fetch(`https://api.ashbyhq.com/posting-api/job-board/${src.board}`);
     if (!res.ok) throw new Error(src.name + ': HTTP ' + res.status);
     const js = await res.json();
-    return (js.jobs || []).filter(j => EARLY_CAREER_RE.test(j.title))
-      .map(j => ({ company: src.company, role: j.title, location: j.location || '', url: j.jobUrl || j.applyUrl || '', source: src.name, board: true }));
+    return tag((js.jobs || []).filter(j => EARLY_CAREER_RE.test(j.title))
+      .map(j => ({ company: src.company, role: j.title, location: j.location || '', url: j.jobUrl || j.applyUrl || '', source: src.name, board: true })));
   }
   let res = await fetch(src.url);
   if (!res.ok && src.fallback) res = await fetch(src.fallback);
@@ -985,7 +1008,7 @@ async function fetchSource(src) {
   // repos use either markdown pipe tables or raw HTML tables (SimplifyJobs
   // switched to the latter) — try pipes first, fall back to HTML
   const rows = parseMarkdownTables(md, src.name);
-  return rows.length ? rows : parseHtmlTables(md, src.name);
+  return tag(rows.length ? rows : parseHtmlTables(md, src.name));
 }
 
 function parseHtmlTables(html, sourceName) {
@@ -1070,7 +1093,9 @@ async function fetchFeed() {
   const keywords = document.getElementById('feed-keywords').value
     .split(',').map(k => k.trim().toLowerCase()).filter(Boolean);
   try {
-    const { all, errs } = await fetchAllRows();
+    const { all: raw, errs } = await fetchAllRows();
+    // focus on Summer 2027 — drop Fall/Summer 2026 and earlier terms
+    const all = raw.filter(isSummer2027);
     // keywords filter the big community lists; company-board rows (already
     // intern-only, from tracker-relevant companies) always pass
     feedResults = (keywords.length
@@ -1081,7 +1106,7 @@ async function fetchFeed() {
         })
       : all).slice(0, 500);
     const okSources = FEED_SOURCES.length - errs.length;
-    statusEl.textContent = `${feedResults.length} matching openings (of ${all.length} total from ${okSources} sources) — fetched ${new Date().toLocaleTimeString()}` + (errs.length ? ' · failed: ' + errs.join('; ') : '');
+    statusEl.textContent = `${feedResults.length} Summer 2027 openings (of ${raw.length} across all terms, ${okSources} sources) — fetched ${new Date().toLocaleTimeString()}` + (errs.length ? ' · failed: ' + errs.join('; ') : '');
     renderFeed();
   } catch (err) {
     statusEl.className = 'feed-status err';
@@ -1353,8 +1378,10 @@ function companyTokens(company) {
 async function checkLivePostings() {
   const el = document.getElementById('live-check-status');
   try {
-    const { all } = await fetchAllRows();
-    if (!all.length) throw new Error('no listings fetched');
+    const { all: raw } = await fetchAllRows();
+    if (!raw.length) throw new Error('no listings fetched');
+    // focus on Summer 2027 — ignore Fall/Summer 2026 and earlier postings
+    const all = raw.filter(isSummer2027);
     liveMatches = {};
     let hits = 0;
     data.internships.forEach(it => {
@@ -1369,8 +1396,8 @@ async function checkLivePostings() {
       if (rows.length) { liveMatches[it.id] = rows; hits++; }
     });
     if (el) el.textContent = hits
-      ? `✅ ${hits} tracker compan${hits === 1 ? 'y has' : 'ies have'} live postings on the GitHub lists — green badges below link straight to them. Checked ${new Date().toLocaleTimeString()}.`
-      : `No tracker-company postings on the GitHub lists yet. Checked ${new Date().toLocaleTimeString()} — this runs automatically every time you open the dashboard.`;
+      ? `✅ ${hits} tracker compan${hits === 1 ? 'y has' : 'ies have'} live Summer 2027 postings — green badges below link straight to them. Checked ${new Date().toLocaleTimeString()}.`
+      : `No live Summer 2027 postings from tracker companies yet. Checked ${new Date().toLocaleTimeString()} — this runs automatically every time you open the dashboard.`;
     render();
   } catch (err) {
     if (el) el.textContent = 'Live posting check failed (' + err.message + ') — the 📡 Live Feed tab still works manually.';
